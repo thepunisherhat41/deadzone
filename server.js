@@ -2,6 +2,7 @@
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 
 const PORT = process.env.PORT || 3000;
@@ -26,6 +27,11 @@ const MAX_HP = 100;
 const RESPAWN_MS = 3000;
 const KILL_REWARD = 50;   // pontos ganhos por kill
 const DEATH_REWARD = 15;  // pontos de consolação ao morrer
+const SESSION_GRACE_MS = 3 * 60 * 1000; // mantém a sessão por 3 min fora do browser
+const HEALTH_PICKUP_COUNT = 5;
+const HEALTH_PICKUP_HEAL = 35;
+const HEALTH_RESPAWN_MIN_MS = 12000;
+const HEALTH_RESPAWN_MAX_MS = 20000;
 
 // ==================== FASES DE JOGO ====================
 const ROUND_MS = 3 * 60 * 1000; // 3 min jogando
@@ -60,6 +66,18 @@ const WEAPONS = {
     name: 'Chinelo', emoji: '🩴', icon: 'chinelo', cost: 0,
     damage: 24, cooldown: 320, speed: 15, range: 520, pellets: 1, hitRadius: 19,
     tint: '#ff5fa2', description: 'Arremesso médio, simples e confiável.'
+  },
+  peido: {
+    name: 'Peido do Pepeu', emoji: '💨', icon: 'fart', cost: 20,
+    damage: 10, cooldown: 520, speed: 7.5, range: 210, pellets: 4, spread: 0.62, hitRadius: 30,
+    tint: '#8fbc58', gas: true,
+    description: 'Nuvem curta e barata. Espalha vários puffs de perto.'
+  },
+  lilika: {
+    name: 'Lilika Possuída', emoji: '👹', icon: 'lilika', cost: 160,
+    damage: 32, cooldown: 900, speed: 15, range: 600, pellets: 1, hitRadius: 27,
+    tint: '#c85cff', possessed: true,
+    description: 'Arremessa uma mini Lilika cartunesca girando pelo mapa.'
   },
   grito: {
     name: 'Grito do Vado', emoji: '📣', icon: 'grito', cost: 0,
@@ -173,6 +191,9 @@ let nextId = 1;
 let nextBulletId = 1;
 let nextBombId = 1;
 const thrownBombs = [];
+const sessions = new Map(); // sessionToken -> playerId
+let nextPickupId = 1;
+const healthPickups = [];
 
 function spawnPoint() {
   // acha um ponto que não esteja dentro de parede
@@ -204,6 +225,10 @@ function makePlayer(id, name) {
     lastShot: 0,
     lastBomb: 0,
     lastSeen: Date.now(),        // heartbeat
+    connected: true,
+    disconnectedAt: 0,
+    sessionToken: '',
+    socket: null,
     input: { up: false, down: false, left: false, right: false },
     color: `hsl(${Math.floor(Math.random() * 360)}, 70%, 55%)`
   };
@@ -226,18 +251,77 @@ function resetInput(pl) {
   pl.input = { up: false, down: false, left: false, right: false };
 }
 
-wss.on('connection', (ws) => {
-  const id = nextId++;
-  const player = makePlayer(id, null);
-  players.set(id, player);
+function cleanSessionToken(raw) {
+  const token = String(raw || '').trim();
+  return /^[a-zA-Z0-9_-]{20,128}$/.test(token) ? token : crypto.randomBytes(24).toString('base64url');
+}
+
+function sessionTokenFromRequest(req) {
+  try {
+    const url = new URL(req.url || '/', 'http://deadzone.local');
+    return cleanSessionToken(url.searchParams.get('session'));
+  } catch {
+    return cleanSessionToken('');
+  }
+}
+
+function randomHealthRespawn() {
+  return HEALTH_RESPAWN_MIN_MS + Math.floor(Math.random() * (HEALTH_RESPAWN_MAX_MS - HEALTH_RESPAWN_MIN_MS + 1));
+}
+
+function makeHealthPickup() {
+  const sp = spawnPoint();
+  return { id: nextPickupId++, x: sp.x, y: sp.y, heal: HEALTH_PICKUP_HEAL, respawnAt: 0 };
+}
+
+function resetHealthPickups() {
+  healthPickups.length = 0;
+  for (let i = 0; i < HEALTH_PICKUP_COUNT; i++) healthPickups.push(makeHealthPickup());
+}
+
+resetHealthPickups();
+
+wss.on('connection', (ws, req) => {
+  const token = sessionTokenFromRequest(req);
+  let id = sessions.get(token);
+  let player = id ? players.get(id) : null;
+  let resumed = false;
+  const now = Date.now();
+
+  // Token conhecido: retoma a sessão se ela ainda estiver dentro da janela de 3 minutos.
+  if (player && !player.connected && player.disconnectedAt && now - player.disconnectedAt > SESSION_GRACE_MS) {
+    players.delete(player.id);
+    sessions.delete(token);
+    player = null;
+    id = null;
+  }
+
+  if (player) {
+    resumed = true;
+    if (player.socket && player.socket !== ws && player.socket.readyState === 1) {
+      try { player.socket.close(4001, 'session resumed'); } catch {}
+    }
+    player.connected = true;
+    player.disconnectedAt = 0;
+    player.lastSeen = now;
+    player.socket = ws;
+    resetInput(player);
+  } else {
+    id = nextId++;
+    player = makePlayer(id, null);
+    player.sessionToken = token;
+    player.socket = ws;
+    players.set(id, player);
+    sessions.set(token, id);
+  }
   ws.playerId = id;
 
-  ws.send(JSON.stringify({ type: 'init', id, world: WORLD, weapons: WEAPONS, utilities: UTILITIES, skins: SKINS, map: currentMap(), killReward: KILL_REWARD, phase, timeLeft: Math.max(0, Math.round((phaseEndsAt - Date.now()) / 1000)) }));
+  ws.send(JSON.stringify({ type: 'init', id, sessionToken: token, resumed, world: WORLD, weapons: WEAPONS, utilities: UTILITIES, skins: SKINS, map: currentMap(), killReward: KILL_REWARD, phase, timeLeft: Math.max(0, Math.round((phaseEndsAt - Date.now()) / 1000)) }));
 
   ws.on('message', (raw) => {
     let msg;
     try { msg = JSON.parse(raw); } catch { return; }
-    const pl = players.get(id);
+    const pl = players.get(ws.playerId);
     if (!pl) return;
     pl.lastSeen = Date.now();
 
@@ -291,7 +375,14 @@ wss.on('connection', (ws) => {
     }
   });
 
-  ws.on('close', () => players.delete(id));
+  ws.on('close', () => {
+    const pl = players.get(ws.playerId);
+    if (!pl || pl.socket !== ws) return; // socket antigo fechado após um resume não derruba a sessão nova
+    pl.connected = false;
+    pl.disconnectedAt = Date.now();
+    pl.socket = null;
+    resetInput(pl);
+  });
 });
 
 function buyWeapon(pl, weaponKey, ws) {
@@ -399,7 +490,7 @@ function explodeBomb(b) {
   events.push({ kind: 'bombExplosion', x: b.x, y: b.y, radius: b.radius });
   const attacker = players.get(b.owner) || null;
   for (const pl of players.values()) {
-    if (!pl.alive || isSpectating(pl)) continue;
+    if (!pl.connected || !pl.alive || isSpectating(pl)) continue;
     const d = Math.hypot(pl.x - b.x, pl.y - b.y);
     if (d > b.radius) continue;
     if (segmentHitsWall(b.x, b.y, pl.x, pl.y)) continue;
@@ -430,6 +521,7 @@ function tryAttack(pl) {
     const spawnOffset = w.wave ? 30 : 26;
     bullets.push({
       id: nextBulletId++, owner: pl.id, wpn: pl.weapon, wave: !!w.wave, pierce: !!w.pierce,
+      gas: !!w.gas, possessed: !!w.possessed,
       x: pl.x + Math.cos(a) * spawnOffset,
       y: pl.y + Math.sin(a) * spawnOffset,
       vx: Math.cos(a) * w.speed, vy: Math.sin(a) * w.speed,
@@ -501,7 +593,7 @@ function tallyVotesAndBan() {
   bannedThisRound = null;
   if (top && topN > 0 && !tie) {
     const pl = players.get(+top);
-    if (pl) {
+    if (pl && pl.connected) {
       pl.spectatorUntilRound = roundNumber + 1; // fica fora da próxima rodada inteira
       pl.banned = true;
       pl.alive = false;
@@ -524,6 +616,7 @@ function nextRound() {
   votes = {};
   bullets.length = 0;
   thrownBombs.length = 0;
+  resetHealthPickups();
   for (const pl of players.values()) {
     resetInput(pl);
     const spectating = isSpectating(pl);
@@ -570,16 +663,27 @@ function handleVote(voter, targetId) {
     return;
   }
   const target = players.get(Number(targetId));
-  if (!target || target.id === voter.id || isSpectating(target)) return;
+  if (!target || !target.connected || target.id === voter.id || isSpectating(target)) return;
   votes[voter.id] = target.id;
 }
 
-// ==================== HEARTBEAT ====================
-// Remove jogadores que sumiram (fecharam aba sem o close disparar) e fecha sockets mortos.
+// ==================== HEARTBEAT + SESSÃO DE 3 MIN ====================
+// Se o browser dormir/fechar, o jogador some da arena mas o estado fica guardado por 3 minutos.
 setInterval(() => {
   const now = Date.now();
   for (const [id, pl] of players) {
-    if (now - pl.lastSeen > 12000) players.delete(id); // 12s sem sinal = saiu
+    if (pl.connected && now - pl.lastSeen > 15000) {
+      // Força o cliente a reconectar. A sessão não é apagada, só entra em grace period.
+      pl.connected = false;
+      pl.disconnectedAt = now;
+      resetInput(pl);
+      const sock = pl.socket;
+      pl.socket = null;
+      try { if (sock && sock.readyState === 1) sock.close(4000, 'heartbeat timeout'); } catch {}
+    } else if (!pl.connected && pl.disconnectedAt && now - pl.disconnectedAt > SESSION_GRACE_MS) {
+      players.delete(id);
+      if (pl.sessionToken) sessions.delete(pl.sessionToken);
+    }
   }
   for (const client of wss.clients) {
     if (client.readyState === 1) client.send(JSON.stringify({ type: 'ping' }));
@@ -593,7 +697,7 @@ setInterval(() => {
   if (!moving && bullets.length) bullets.length = 0;
   // Movimento com colisão (testa eixos separadamente pra deslizar na parede)
   for (const pl of players.values()) {
-    if (!pl.alive || isSpectating(pl) || !moving) continue;
+    if (!pl.connected || !pl.alive || isSpectating(pl) || !moving) continue;
     let dx = 0, dy = 0;
     if (pl.input.up) dy -= 1;
     if (pl.input.down) dy += 1;
@@ -624,7 +728,7 @@ setInterval(() => {
 
       const hitR = b.hitRadius || (b.wave ? 42 : 20);
       for (const pl of players.values()) {
-        if (pl.id === b.owner || !pl.alive || isSpectating(pl) || b.hitIds.has(pl.id)) continue;
+        if (!pl.connected || pl.id === b.owner || !pl.alive || isSpectating(pl) || b.hitIds.has(pl.id)) continue;
         if (Math.hypot(pl.x - b.x, pl.y - b.y) < hitR) {
           applyDamage(pl, players.get(b.owner), b.damage);
           b.hitIds.add(pl.id);
@@ -637,8 +741,27 @@ setInterval(() => {
     }
   }
 
-  // Pinga do Lelê: garrafa-bomba autoritativa, com colisão e explosão em área.
+  // Churrasco da Mamãe Márcia: cura espalhada aleatoriamente pela arena.
   const nowTick = Date.now();
+  for (const hp of healthPickups) {
+    if (hp.respawnAt) {
+      if (nowTick < hp.respawnAt) continue;
+      const sp = spawnPoint(); hp.x = sp.x; hp.y = sp.y; hp.respawnAt = 0;
+    }
+    if (!moving) continue;
+    for (const pl of players.values()) {
+      if (!pl.connected || !pl.alive || isSpectating(pl) || pl.hp >= pl.maxHp) continue;
+      if (Math.hypot(pl.x - hp.x, pl.y - hp.y) > 31) continue;
+      const before = pl.hp;
+      pl.hp = Math.min(pl.maxHp, pl.hp + hp.heal);
+      const healed = pl.hp - before;
+      hp.respawnAt = nowTick + randomHealthRespawn();
+      events.push({ kind: 'heal', x: hp.x, y: hp.y, player: pl.id, amount: healed });
+      break;
+    }
+  }
+
+  // Pinga do Lelê: garrafa-bomba autoritativa, com colisão e explosão em área.
   for (let i = thrownBombs.length - 1; i >= 0; i--) {
     const b = thrownBombs[i];
     if (!b.stopped) {
@@ -666,15 +789,16 @@ setInterval(() => {
   // Broadcast
   const state = {
     type: 'state',
-    players: [...players.values()].map(p => ({
+    players: [...players.values()].filter(p => p.connected).map(p => ({
       id: p.id, name: p.name, x: Math.round(p.x), y: Math.round(p.y),
       angle: +p.angle.toFixed(2), hp: p.hp, maxHp: p.maxHp, alive: p.alive,
       weapon: p.weapon, kills: p.kills, deaths: p.deaths, points: p.points,
       level: p.level, owned: p.owned, color: p.color, banned: p.banned, spectating: isSpectating(p),
       armor: p.armor, bombs: p.bombs, skin: p.skin, ownedSkins: p.ownedSkins
     })),
-    bullets: bullets.map(b => ({ x: Math.round(b.x), y: Math.round(b.y), a: +Math.atan2(b.vy, b.vx).toFixed(2), w: b.wpn, wave: b.wave ? 1 : 0, progress: Math.max(0, Math.min(1, b.dist / b.range)) })),
+    bullets: bullets.map(b => ({ x: Math.round(b.x), y: Math.round(b.y), a: +Math.atan2(b.vy, b.vx).toFixed(2), w: b.wpn, wave: b.wave ? 1 : 0, gas: b.gas ? 1 : 0, possessed: b.possessed ? 1 : 0, progress: Math.max(0, Math.min(1, b.dist / b.range)) })),
     bombs: thrownBombs.map(b => ({ id: b.id, x: Math.round(b.x), y: Math.round(b.y), a: +Math.atan2(b.vy, b.vx).toFixed(2), fuse: Math.max(0, b.fuseAt - Date.now()) })),
+    pickups: healthPickups.filter(h => !h.respawnAt).map(h => ({ id: h.id, x: Math.round(h.x), y: Math.round(h.y), heal: h.heal, kind: 'churrasco' })),
     events,
     chat: chatLog,
     phase,
