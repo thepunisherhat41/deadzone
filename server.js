@@ -27,6 +27,14 @@ const RESPAWN_MS = 3000;
 const KILL_REWARD = 50;   // pontos ganhos por kill
 const DEATH_REWARD = 15;  // pontos de consolação ao morrer
 
+// ==================== FASES DE JOGO ====================
+const ROUND_MS = 3 * 60 * 1000; // 3 min jogando
+const VOTE_MS = 30 * 1000;      // 30s de votação
+let phase = 'playing';          // 'playing' | 'voting'
+let phaseEndsAt = Date.now() + ROUND_MS;
+let votes = {};                 // voterId -> targetId (ou 'skip')
+let bannedThisRound = null;     // id do ejetado na última votação
+
 // Arsenal DeadZone: Alpes Edition — cada arma tem dano e comportamento próprios.
 const WEAPONS = {
   chinelo: { name: 'Chinelo',       emoji: '🩴', cost: 0,   damage: 22, cooldown: 260, speed: 17, range: 720, pellets: 1, tint: '#ff5fa2' },
@@ -142,6 +150,7 @@ function makePlayer(id, name) {
     points: 0,                   // moeda pra comprar
     level: 1,                    // nível (informado pelo cliente, vem do localStorage)
     kills: 0, deaths: 0,
+    banned: false,               // ejetado nesta tela (volta na próxima)
     lastShot: 0,
     lastSeen: Date.now(),        // heartbeat
     input: { up: false, down: false, left: false, right: false },
@@ -164,7 +173,7 @@ wss.on('connection', (ws) => {
   players.set(id, player);
   ws.playerId = id;
 
-  ws.send(JSON.stringify({ type: 'init', id, world: WORLD, weapons: WEAPONS, map: currentMap(), killReward: KILL_REWARD }));
+  ws.send(JSON.stringify({ type: 'init', id, world: WORLD, weapons: WEAPONS, map: currentMap(), killReward: KILL_REWARD, phase, timeLeft: Math.max(0, Math.round((phaseEndsAt - Date.now()) / 1000)) }));
 
   ws.on('message', (raw) => {
     let msg;
@@ -194,7 +203,10 @@ wss.on('connection', (ws) => {
         buyWeapon(pl, msg.weapon, ws);
         break;
       case 'attack':
-        if (pl.alive) tryAttack(pl);
+        if (pl.alive && phase === 'playing') tryAttack(pl);
+        break;
+      case 'vote':
+        handleVote(pl, msg.target);
         break;
       case 'chat':
         handleChat(pl, msg.text);
@@ -267,9 +279,78 @@ function applyDamage(target, attacker, dmg) {
 }
 
 function respawn(pl) {
+  if (pl.banned) return; // banido não renasce nesta tela
   const sp = spawnPoint();
   pl.x = sp.x; pl.y = sp.y;
   pl.hp = pl.maxHp || MAX_HP; pl.alive = true;
+}
+
+// ==================== SISTEMA DE VOTAÇÃO ====================
+function startVoting() {
+  phase = 'voting';
+  votes = {};
+  phaseEndsAt = Date.now() + VOTE_MS;
+  chatLog.push({ name: 'sistema', color: '#ffd23b', text: '🗳️ REUNIÃO! Votem em quem sai desta tela.' });
+}
+
+function tallyVotesAndBan() {
+  // conta votos por alvo
+  const count = {};
+  for (const voter in votes) {
+    const t = votes[voter];
+    if (t && t !== 'skip') count[t] = (count[t] || 0) + 1;
+  }
+  // acha o mais votado (empate ou zero votos = ninguém sai)
+  let top = null, topN = 0, tie = false;
+  for (const id in count) {
+    if (count[id] > topN) { top = id; topN = count[id]; tie = false; }
+    else if (count[id] === topN) tie = true;
+  }
+  bannedThisRound = null;
+  if (top && topN > 0 && !tie) {
+    const pl = players.get(+top);
+    if (pl) {
+      pl.banned = true; pl.alive = false;
+      bannedThisRound = { id: pl.id, name: pl.name };
+      chatLog.push({ name: 'sistema', color: '#ff3b52', text: `🚪 ${pl.name} foi banido desta tela!` });
+    }
+  } else {
+    chatLog.push({ name: 'sistema', color: '#9fc4e8', text: 'Ninguém foi banido (empate ou sem votos).' });
+  }
+}
+
+function nextRound() {
+  // sorteia novo mapa, restaura banidos, reseta placar da tela
+  tallyVotesAndBan();
+  currentMapIndex = Math.floor(Math.random() * MAPS.length);
+  phase = 'playing';
+  phaseEndsAt = Date.now() + ROUND_MS;
+  votes = {};
+  for (const pl of players.values()) {
+    pl.banned = false; // todos voltam na nova tela
+    const sp = spawnPoint();
+    pl.x = sp.x; pl.y = sp.y;
+    pl.hp = pl.maxHp || MAX_HP; pl.alive = true;
+  }
+  // avisa o novo mapa a todos
+  const initMap = currentMap();
+  for (const client of wss.clients) {
+    if (client.readyState === 1) client.send(JSON.stringify({ type: 'newMap', map: initMap, name: initMap.name }));
+  }
+  chatLog.push({ name: 'sistema', color: '#4ade5f', text: `🏠 Nova tela: ${initMap.name}` });
+}
+
+// gerência de tempo das fases
+setInterval(() => {
+  if (Date.now() < phaseEndsAt) return;
+  if (phase === 'playing') startVoting();
+  else nextRound();
+}, 500);
+
+function handleVote(voter, targetId) {
+  if (phase !== 'voting') return;
+  if (voter.banned) return; // banido não vota
+  votes[voter.id] = targetId; // 'skip' ou id
 }
 
 // ==================== HEARTBEAT ====================
@@ -287,9 +368,10 @@ setInterval(() => {
 // ==================== LOOP PRINCIPAL ====================
 const STEP = 9.6; // deslocamento por tick
 setInterval(() => {
+  const moving = (phase === 'playing');
   // Movimento com colisão (testa eixos separadamente pra deslizar na parede)
   for (const pl of players.values()) {
-    if (!pl.alive) continue;
+    if (!pl.alive || !moving) continue;
     let dx = 0, dy = 0;
     if (pl.input.up) dy -= 1;
     if (pl.input.down) dy += 1;
@@ -339,11 +421,14 @@ setInterval(() => {
       id: p.id, name: p.name, x: Math.round(p.x), y: Math.round(p.y),
       angle: +p.angle.toFixed(2), hp: p.hp, maxHp: p.maxHp, alive: p.alive,
       weapon: p.weapon, kills: p.kills, deaths: p.deaths, points: p.points,
-      level: p.level, owned: p.owned, color: p.color
+      level: p.level, owned: p.owned, color: p.color, banned: p.banned
     })),
     bullets: bullets.map(b => ({ x: Math.round(b.x), y: Math.round(b.y), a: +Math.atan2(b.vy, b.vx).toFixed(2), w: b.wpn, wave: b.wave ? 1 : 0 })),
     events,
-    chat: chatLog
+    chat: chatLog,
+    phase,
+    timeLeft: Math.max(0, Math.round((phaseEndsAt - Date.now()) / 1000)),
+    votes: phase === 'voting' ? votes : null
   };
   const payload = JSON.stringify(state);
   for (const client of wss.clients) {
