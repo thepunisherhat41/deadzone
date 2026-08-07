@@ -37,6 +37,24 @@ let bannedThisRound = null;     // dados do ejetado na última votação
 let roundNumber = 1;              // rodada atual; usado para suspensão de 1 rodada
 
 // Arsenal DeadZone: Alpes Edition — cada arma tem dano e comportamento próprios.
+const UTILITIES = {
+  mamaeMarcia: {
+    name: 'Mamãe Márcia', icon: 'armor', cost: 30, armor: 60,
+    description: 'Colete à prova de bala barato. Absorve até 60 de dano antes do HP.'
+  },
+  pingaLele: {
+    name: 'Pinga do Lelê', icon: 'bomb', cost: 25, maxCarry: 3,
+    damage: 72, radius: 150, fuseMs: 1250, speed: 17,
+    description: 'Garrafa-bomba arremessável. Explode em área e respeita paredes.'
+  }
+};
+
+const SKINS = {
+  bean: { name: 'Clássico', icon: 'bean', cost: 0, description: 'O personagem clássico do DEADZONE.' },
+  gravida: { name: 'Gestante', icon: 'pregnant', cost: 15, description: 'Mulher negra grávida em estilo cartunesco.' },
+  capivara: { name: 'Capivara', icon: 'capybara', cost: 15, description: 'Capivara dos Alpes. Mesmas hitbox e velocidade dos demais.' }
+};
+
 const WEAPONS = {
   chinelo: {
     name: 'Chinelo', emoji: '🩴', icon: 'chinelo', cost: 0,
@@ -153,6 +171,8 @@ let events = [];
 let chatLog = [];   // últimas mensagens de chat a distribuir neste tick
 let nextId = 1;
 let nextBulletId = 1;
+let nextBombId = 1;
+const thrownBombs = [];
 
 function spawnPoint() {
   // acha um ponto que não esteja dentro de parede
@@ -172,12 +192,17 @@ function makePlayer(id, name) {
     hp: MAX_HP, maxHp: MAX_HP, alive: true,
     weapon: 'chinelo',
     owned: { chinelo: true, grito: true },  // ambas grátis desde o início
+    skin: 'bean',
+    ownedSkins: { bean: true },
+    armor: 0,
+    bombs: 0,
     points: 0,                   // moeda pra comprar
     level: 1,                    // nível (informado pelo cliente, vem do localStorage)
     kills: 0, deaths: 0,
     banned: false,               // compatibilidade de UI: true enquanto estiver espectador
     spectatorUntilRound: 0,       // número da última rodada em que deve ficar fora
     lastShot: 0,
+    lastBomb: 0,
     lastSeen: Date.now(),        // heartbeat
     input: { up: false, down: false, left: false, right: false },
     color: `hsl(${Math.floor(Math.random() * 360)}, 70%, 55%)`
@@ -207,7 +232,7 @@ wss.on('connection', (ws) => {
   players.set(id, player);
   ws.playerId = id;
 
-  ws.send(JSON.stringify({ type: 'init', id, world: WORLD, weapons: WEAPONS, map: currentMap(), killReward: KILL_REWARD, phase, timeLeft: Math.max(0, Math.round((phaseEndsAt - Date.now()) / 1000)) }));
+  ws.send(JSON.stringify({ type: 'init', id, world: WORLD, weapons: WEAPONS, utilities: UTILITIES, skins: SKINS, map: currentMap(), killReward: KILL_REWARD, phase, timeLeft: Math.max(0, Math.round((phaseEndsAt - Date.now()) / 1000)) }));
 
   ws.on('message', (raw) => {
     let msg;
@@ -240,6 +265,18 @@ wss.on('connection', (ws) => {
       case 'buy':
         buyWeapon(pl, msg.weapon, ws);
         break;
+      case 'buyUtility':
+        buyUtility(pl, msg.item, ws);
+        break;
+      case 'buySkin':
+        buySkin(pl, msg.skin, ws);
+        break;
+      case 'switchSkin':
+        switchSkin(pl, msg.skin);
+        break;
+      case 'useBomb':
+        if (pl.alive && !isSpectating(pl) && phase === 'playing') throwBomb(pl, ws);
+        break;
       case 'attack':
         if (pl.alive && !isSpectating(pl) && phase === 'playing') tryAttack(pl);
         break;
@@ -269,6 +306,107 @@ function buyWeapon(pl, weaponKey, ws) {
   pl.owned[weaponKey] = true;
   pl.weapon = weaponKey; // equipa automaticamente
   ws.send(JSON.stringify({ type: 'buyResult', ok: true, weapon: weaponKey }));
+}
+
+function buyUtility(pl, itemKey, ws) {
+  const item = UTILITIES[itemKey];
+  if (!item) return;
+
+  if (itemKey === 'mamaeMarcia') {
+    if (pl.armor >= item.armor) {
+      ws.send(JSON.stringify({ type: 'shopResult', ok: false, reason: 'Mamãe Márcia já está protegendo você' }));
+      return;
+    }
+    if (pl.points < item.cost) {
+      ws.send(JSON.stringify({ type: 'shopResult', ok: false, reason: 'pontos insuficientes' }));
+      return;
+    }
+    pl.points -= item.cost;
+    pl.armor = item.armor;
+    ws.send(JSON.stringify({ type: 'shopResult', ok: true, kind: 'utility', item: itemKey, message: `🛡️ ${item.name} equipado: +${item.armor} de proteção` }));
+    return;
+  }
+
+  if (itemKey === 'pingaLele') {
+    if (pl.bombs >= item.maxCarry) {
+      ws.send(JSON.stringify({ type: 'shopResult', ok: false, reason: `máximo de ${item.maxCarry} Pingas do Lelê` }));
+      return;
+    }
+    if (pl.points < item.cost) {
+      ws.send(JSON.stringify({ type: 'shopResult', ok: false, reason: 'pontos insuficientes' }));
+      return;
+    }
+    pl.points -= item.cost;
+    pl.bombs++;
+    ws.send(JSON.stringify({ type: 'shopResult', ok: true, kind: 'utility', item: itemKey, message: `🍾 ${item.name} comprada. Você tem ${pl.bombs}.` }));
+  }
+}
+
+function buySkin(pl, skinKey, ws) {
+  const skin = SKINS[skinKey];
+  if (!skin || skinKey === 'bean') return;
+  if (pl.ownedSkins[skinKey]) {
+    pl.skin = skinKey;
+    ws.send(JSON.stringify({ type: 'shopResult', ok: true, kind: 'skin', skin: skinKey, message: `🧍 ${skin.name} equipado.` }));
+    return;
+  }
+  if (pl.points < skin.cost) {
+    ws.send(JSON.stringify({ type: 'shopResult', ok: false, reason: 'pontos insuficientes' }));
+    return;
+  }
+  pl.points -= skin.cost;
+  pl.ownedSkins[skinKey] = true;
+  pl.skin = skinKey;
+  ws.send(JSON.stringify({ type: 'shopResult', ok: true, kind: 'skin', skin: skinKey, message: `🧍 Personagem ${skin.name} comprado e equipado.` }));
+}
+
+function switchSkin(pl, skinKey) {
+  if (SKINS[skinKey] && pl.ownedSkins[skinKey]) pl.skin = skinKey;
+}
+
+function throwBomb(pl, ws) {
+  const item = UTILITIES.pingaLele;
+  const now = Date.now();
+  if (now - pl.lastBomb < 450) return;
+  if (pl.bombs <= 0) {
+    ws.send(JSON.stringify({ type: 'shopResult', ok: false, reason: 'você não tem Pinga do Lelê' }));
+    return;
+  }
+  pl.lastBomb = now;
+  pl.bombs--;
+  const a = pl.angle;
+  thrownBombs.push({
+    id: nextBombId++, owner: pl.id,
+    x: pl.x + Math.cos(a) * 30, y: pl.y + Math.sin(a) * 30,
+    vx: Math.cos(a) * item.speed, vy: Math.sin(a) * item.speed,
+    fuseAt: now + item.fuseMs, radius: item.radius, damage: item.damage,
+    travelled: 0, stopped: false
+  });
+  events.push({ kind: 'bombThrow', x: pl.x, y: pl.y, angle: a, owner: pl.id });
+}
+
+function segmentHitsWall(x1, y1, x2, y2) {
+  const dist = Math.hypot(x2 - x1, y2 - y1);
+  const steps = Math.max(1, Math.ceil(dist / 10));
+  for (let i = 1; i < steps; i++) {
+    const t = i / steps;
+    if (hitsWall(x1 + (x2 - x1) * t, y1 + (y2 - y1) * t, 2)) return true;
+  }
+  return false;
+}
+
+function explodeBomb(b) {
+  events.push({ kind: 'bombExplosion', x: b.x, y: b.y, radius: b.radius });
+  const attacker = players.get(b.owner) || null;
+  for (const pl of players.values()) {
+    if (!pl.alive || isSpectating(pl)) continue;
+    const d = Math.hypot(pl.x - b.x, pl.y - b.y);
+    if (d > b.radius) continue;
+    if (segmentHitsWall(b.x, b.y, pl.x, pl.y)) continue;
+    const falloff = 1 - Math.min(1, d / b.radius) * 0.65;
+    const dmg = Math.max(18, Math.round(b.damage * falloff));
+    applyDamage(pl, attacker, dmg);
+  }
 }
 
 function handleChat(pl, text) {
@@ -303,11 +441,20 @@ function tryAttack(pl) {
 }
 
 function applyDamage(target, attacker, dmg) {
-  if (!target.alive) return;
-  target.hp -= dmg;
+  if (!target.alive || isSpectating(target)) return;
+  let remaining = Math.max(0, dmg | 0);
+  if (target.armor > 0 && remaining > 0) {
+    const absorbed = Math.min(target.armor, remaining);
+    target.armor -= absorbed;
+    remaining -= absorbed;
+    events.push({ kind: 'armorHit', x: target.x, y: target.y, amount: absorbed });
+  }
+  if (remaining <= 0) return;
+  target.hp -= remaining;
   events.push({ kind: 'hit', x: target.x, y: target.y, angle: attacker ? Math.atan2(target.y - attacker.y, target.x - attacker.x) : 0 });
   if (target.hp <= 0) {
     target.alive = false;
+    target.armor = 0;
     target.deaths++;
     target.points += DEATH_REWARD;  // consolação: morrer também dá pontos
     if (attacker && attacker.id !== target.id) {
@@ -321,10 +468,10 @@ function applyDamage(target, attacker, dmg) {
 }
 
 function respawn(pl) {
-  if (isSpectating(pl)) return; // ejetado fica espectador durante a rodada de suspensão
+  if (isSpectating(pl) || phase !== 'playing' || pl.alive) return; // evita respawn atrasado após votação/troca de rodada
   const sp = spawnPoint();
   pl.x = sp.x; pl.y = sp.y;
-  pl.hp = pl.maxHp || MAX_HP; pl.alive = true;
+  pl.hp = pl.maxHp || MAX_HP; pl.armor = 0; pl.alive = true;
 }
 
 // ==================== SISTEMA DE VOTAÇÃO ====================
@@ -332,6 +479,7 @@ function startVoting() {
   phase = 'voting';
   votes = {};
   bullets.length = 0; // nenhum projétil continua causando dano durante a reunião
+  thrownBombs.length = 0;
   for (const pl of players.values()) resetInput(pl);
   phaseEndsAt = Date.now() + VOTE_MS;
   chatLog.push({ name: 'sistema', color: '#ffd23b', text: '🗳️ REUNIÃO! Votem em quem fica fora da próxima rodada.' });
@@ -375,6 +523,7 @@ function nextRound() {
   phaseEndsAt = Date.now() + ROUND_MS;
   votes = {};
   bullets.length = 0;
+  thrownBombs.length = 0;
   for (const pl of players.values()) {
     resetInput(pl);
     const spectating = isSpectating(pl);
@@ -488,6 +637,32 @@ setInterval(() => {
     }
   }
 
+  // Pinga do Lelê: garrafa-bomba autoritativa, com colisão e explosão em área.
+  const nowTick = Date.now();
+  for (let i = thrownBombs.length - 1; i >= 0; i--) {
+    const b = thrownBombs[i];
+    if (!b.stopped) {
+      const speed = Math.hypot(b.vx, b.vy);
+      const steps = Math.max(1, Math.ceil(speed / 7));
+      const sx = b.vx / steps, sy = b.vy / steps;
+      for (let st = 0; st < steps; st++) {
+        const nx = b.x + sx, ny = b.y + sy;
+        if (hitsWall(nx, ny, 5)) {
+          b.stopped = true; b.vx = 0; b.vy = 0;
+          b.fuseAt = Math.min(b.fuseAt, nowTick + 280);
+          break;
+        }
+        b.x = nx; b.y = ny; b.travelled += Math.hypot(sx, sy);
+      }
+      b.vx *= 0.965; b.vy *= 0.965;
+      if (Math.hypot(b.vx, b.vy) < 1.3 || b.travelled > 470) { b.stopped = true; b.vx = 0; b.vy = 0; }
+    }
+    if (nowTick >= b.fuseAt || b.x < 0 || b.y < 0 || b.x > WORLD.w || b.y > WORLD.h) {
+      explodeBomb(b);
+      thrownBombs.splice(i, 1);
+    }
+  }
+
   // Broadcast
   const state = {
     type: 'state',
@@ -495,9 +670,11 @@ setInterval(() => {
       id: p.id, name: p.name, x: Math.round(p.x), y: Math.round(p.y),
       angle: +p.angle.toFixed(2), hp: p.hp, maxHp: p.maxHp, alive: p.alive,
       weapon: p.weapon, kills: p.kills, deaths: p.deaths, points: p.points,
-      level: p.level, owned: p.owned, color: p.color, banned: p.banned, spectating: isSpectating(p)
+      level: p.level, owned: p.owned, color: p.color, banned: p.banned, spectating: isSpectating(p),
+      armor: p.armor, bombs: p.bombs, skin: p.skin, ownedSkins: p.ownedSkins
     })),
     bullets: bullets.map(b => ({ x: Math.round(b.x), y: Math.round(b.y), a: +Math.atan2(b.vy, b.vx).toFixed(2), w: b.wpn, wave: b.wave ? 1 : 0, progress: Math.max(0, Math.min(1, b.dist / b.range)) })),
+    bombs: thrownBombs.map(b => ({ id: b.id, x: Math.round(b.x), y: Math.round(b.y), a: +Math.atan2(b.vy, b.vx).toFixed(2), fuse: Math.max(0, b.fuseAt - Date.now()) })),
     events,
     chat: chatLog,
     phase,
