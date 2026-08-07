@@ -6,20 +6,31 @@ const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 
 const PORT = process.env.PORT || 3000;
+const BUILD = 'beta-0.6.0';
 
+// Servidor estático mínimo e previsível. HTML sempre no-store para evitar celular preso em deploy antigo.
 const server = http.createServer((req, res) => {
-  const filePath = req.url === '/' ? '/index.html' : req.url;
-  const full = path.join(__dirname, 'public', filePath);
+  let pathname = '/';
+  try { pathname = decodeURIComponent(new URL(req.url || '/', 'http://deadzone.local').pathname); } catch {}
+  if (pathname === '/') pathname = '/index.html';
+  if (pathname !== '/index.html') { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('Not found'); return; }
+
+  const full = path.join(__dirname, 'public', 'index.html');
   fs.readFile(full, (err, data) => {
-    if (err) { res.writeHead(404); res.end('Not found'); return; }
-    const ext = path.extname(full);
-    const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' };
-    res.writeHead(200, { 'Content-Type': types[ext] || 'text/plain' });
+    if (err) { res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('Server error'); return; }
+    res.writeHead(200, {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'X-Content-Type-Options': 'nosniff',
+      'Referrer-Policy': 'same-origin'
+    });
     res.end(data);
   });
 });
 
-const wss = new WebSocketServer({ server });
+const wss = new WebSocketServer({ server, maxPayload: 16 * 1024 });
 
 // ==================== CONFIG ====================
 const WORLD = { w: 1600, h: 1200 };
@@ -110,63 +121,90 @@ const MAPS = [
     name: 'Sobrado dos Alpes 859',
     floor: '#20252e', // rua/calçada escura em volta
     rooms: [
-      { x: 520, y: 120, w: 560, h: 180, label: '🚗 Garagem',   color: '#2c3038' },
-      { x: 520, y: 320, w: 300, h: 240, label: '🛋️ Sala',      color: '#4a3f30' },
-      { x: 840, y: 320, w: 240, h: 240, label: '🍳 Cozinha',   color: '#3f4535' },
-      { x: 520, y: 580, w: 240, h: 240, label: '🚿 Banheiro',  color: '#35434a' },
-      { x: 780, y: 580, w: 300, h: 240, label: '🛏️ Quarto',    color: '#453540' },
-      { x: 140, y: 300, w: 340, h: 540, label: '🌳 Quintal',    color: '#2e4a32' },
-      { x: 1120, y: 300, w: 340, h: 540, label: '🧺 Lavanderia', color: '#35454a' }
+      { x: 520, y: 120, w: 560, h: 180, label: '🚗 Garagem',   color: '#303744' },
+      { x: 520, y: 320, w: 300, h: 240, label: '🛋️ Sala',      color: '#594934' },
+      { x: 840, y: 320, w: 240, h: 240, label: '🍳 Cozinha',   color: '#4a523b' },
+      { x: 520, y: 580, w: 240, h: 240, label: '🚿 Banheiro',  color: '#3b5260' },
+      { x: 780, y: 580, w: 300, h: 240, label: '🛏️ Quarto',    color: '#563d50' },
+      { x: 140, y: 300, w: 340, h: 540, label: '🌳 Quintal',    color: '#315b39' },
+      { x: 1120, y: 300, w: 340, h: 540, label: '🧺 Lavanderia', color: '#39515a' }
     ],
     walls: [
-      // contorno da casa (com aberturas = portas)
-      { x: 520, y: 300, w: 560, h: 20 },             // parede sob a garagem
-      { x: 500, y: 320, w: 20, h: 240 },             // lateral esq sala
-      { x: 1080, y: 320, w: 20, h: 500 },            // lateral dir cozinha/quarto
-      { x: 820, y: 340, w: 20, h: 200 },             // sala|cozinha (porta embaixo)
-      { x: 520, y: 560, w: 240, h: 20 },             // sala/banheiro (porta na direita)
-      { x: 840, y: 560, w: 240, h: 20 },             // cozinha/quarto
-      { x: 760, y: 600, w: 20, h: 220 },             // banheiro|quarto
-      // paredes externas que separam quintal e lavanderia da rua (com passagens)
-      { x: 480, y: 300, w: 20, h: 180 }, { x: 480, y: 620, w: 20, h: 220 },
-      { x: 1100, y: 300, w: 20, h: 180 }, { x: 1100, y: 620, w: 20, h: 220 }
+      // Garagem -> casa: porta central com 100px livres
+      { x: 520, y: 300, w: 180, h: 20 }, { x: 800, y: 300, w: 280, h: 20 },
+      // Quintal -> sala/banheiro: duas passagens largas
+      { x: 500, y: 320, w: 20, h: 105 }, { x: 500, y: 515, w: 20, h: 120 }, { x: 500, y: 725, w: 20, h: 95 },
+      // Casa -> lavanderia: duas passagens largas
+      { x: 1080, y: 320, w: 20, h: 105 }, { x: 1080, y: 515, w: 20, h: 120 }, { x: 1080, y: 725, w: 20, h: 95 },
+      // Sala <-> cozinha, abertura de 90px
+      { x: 820, y: 320, w: 20, h: 75 }, { x: 820, y: 485, w: 20, h: 75 },
+      // Sala <-> banheiro
+      { x: 520, y: 560, w: 100, h: 20 }, { x: 710, y: 560, w: 50, h: 20 },
+      // Cozinha <-> quarto
+      { x: 840, y: 560, w: 70, h: 20 }, { x: 1000, y: 560, w: 80, h: 20 },
+      // Banheiro <-> quarto
+      { x: 760, y: 580, w: 20, h: 70 }, { x: 760, y: 740, w: 20, h: 80 }
+    ],
+    doors: [
+      { x:700,y:300,w:100,h:20 }, { x:500,y:425,w:20,h:90 }, { x:500,y:635,w:20,h:90 },
+      { x:1080,y:425,w:20,h:90 }, { x:1080,y:635,w:20,h:90 }, { x:820,y:395,w:20,h:90 },
+      { x:620,y:560,w:90,h:20 }, { x:910,y:560,w:90,h:20 }, { x:760,y:650,w:20,h:90 }
     ]
   },
   {
     name: 'Casa da Vó',
     floor: '#241f18',
     rooms: [
-      { x: 430, y: 160, w: 340, h: 240, label: '🛋️ Sala',      color: '#4a3f30' },
-      { x: 800, y: 160, w: 320, h: 240, label: '🍳 Cozinha',   color: '#3f4535' },
-      { x: 430, y: 430, w: 340, h: 260, label: '🛏️ Quarto',    color: '#453540' },
-      { x: 800, y: 430, w: 320, h: 260, label: '🚿 Banheiro',  color: '#35434a' },
-      { x: 120, y: 200, w: 280, h: 700, label: '🌳 Quintal',    color: '#2e4a32' },
-      { x: 430, y: 720, w: 690, h: 180, label: '🧺 Área/Varal', color: '#35454a' }
+      { x: 430, y: 160, w: 340, h: 240, label: '🛋️ Sala',      color: '#594934' },
+      { x: 800, y: 160, w: 320, h: 240, label: '🍳 Cozinha',   color: '#4a523b' },
+      { x: 430, y: 430, w: 340, h: 260, label: '🛏️ Quarto',    color: '#563d50' },
+      { x: 800, y: 430, w: 320, h: 260, label: '🚿 Banheiro',  color: '#3b5260' },
+      { x: 120, y: 200, w: 280, h: 700, label: '🌳 Quintal',    color: '#315b39' },
+      { x: 430, y: 720, w: 690, h: 180, label: '🧺 Área/Varal', color: '#39515a' }
     ],
     walls: [
-      { x: 770, y: 160, w: 20, h: 180 },   // sala|cozinha (porta embaixo)
-      { x: 430, y: 400, w: 340, h: 20 },   // sala/quarto
-      { x: 800, y: 400, w: 320, h: 20 },   // cozinha/banheiro
-      { x: 770, y: 470, w: 20, h: 220 },   // quarto|banheiro
-      { x: 400, y: 200, w: 20, h: 260 }, { x: 400, y: 560, w: 20, h: 340 }, // quintal
-      { x: 430, y: 700, w: 300, h: 20 }, { x: 820, y: 700, w: 300, h: 20 }  // área embaixo
+      // Sala <-> cozinha
+      { x:780,y:160,w:20,h:80 }, { x:780,y:330,w:20,h:70 },
+      // Sala <-> quarto
+      { x:430,y:410,w:120,h:20 }, { x:650,y:410,w:120,h:20 },
+      // Cozinha <-> banheiro
+      { x:800,y:410,w:90,h:20 }, { x:990,y:410,w:130,h:20 },
+      // Quarto <-> banheiro
+      { x:780,y:430,w:20,h:75 }, { x:780,y:595,w:20,h:95 },
+      // Quintal -> casa com dois acessos
+      { x:410,y:200,w:20,h:120 }, { x:410,y:410,w:20,h:100 }, { x:410,y:600,w:20,h:300 },
+      // Casa -> área/varal
+      { x:430,y:705,w:150,h:20 }, { x:680,y:705,w:170,h:20 }, { x:950,y:705,w:170,h:20 }
+    ],
+    doors: [
+      {x:780,y:240,w:20,h:90}, {x:550,y:410,w:100,h:20}, {x:890,y:410,w:100,h:20},
+      {x:780,y:505,w:20,h:90}, {x:410,y:320,w:20,h:90}, {x:410,y:510,w:20,h:90},
+      {x:580,y:705,w:100,h:20}, {x:850,y:705,w:100,h:20}
     ]
   },
   {
     name: 'Kitnet do Zé',
     floor: '#1e2226',
     rooms: [
-      { x: 400, y: 200, w: 420, h: 320, label: '🛋️ Sala/Quarto', color: '#453f38' },
-      { x: 850, y: 200, w: 340, h: 160, label: '🍳 Cozinha',      color: '#3f4535' },
-      { x: 850, y: 390, w: 340, h: 130, label: '🚿 Banheiro',     color: '#35434a' },
-      { x: 120, y: 200, w: 250, h: 500, label: '🚪 Corredor',     color: '#2c3038' },
-      { x: 400, y: 550, w: 790, h: 200, label: '🌳 Quintal',       color: '#2e4a32' }
+      { x: 400, y: 200, w: 420, h: 320, label: '🛋️ Sala/Quarto', color: '#55483e' },
+      { x: 850, y: 200, w: 340, h: 160, label: '🍳 Cozinha',      color: '#4a523b' },
+      { x: 850, y: 390, w: 340, h: 130, label: '🚿 Banheiro',     color: '#3b5260' },
+      { x: 120, y: 200, w: 250, h: 500, label: '🚪 Corredor',     color: '#303744' },
+      { x: 400, y: 550, w: 790, h: 200, label: '🌳 Quintal',       color: '#315b39' }
     ],
     walls: [
-      { x: 820, y: 200, w: 20, h: 320 },   // sala|cozinha/banheiro
-      { x: 850, y: 360, w: 340, h: 20 },   // cozinha/banheiro
-      { x: 370, y: 200, w: 20, h: 200 }, { x: 370, y: 480, w: 20, h: 220 }, // corredor (porta)
-      { x: 400, y: 520, w: 300, h: 20 }, { x: 780, y: 520, w: 410, h: 20 }  // quintal (passagem)
+      // Sala/Quarto <-> cozinha/banheiro com duas portas
+      {x:830,y:200,w:20,h:80}, {x:830,y:370,w:20,h:55}, {x:830,y:505,w:20,h:15},
+      // Cozinha <-> banheiro
+      {x:850,y:375,w:110,h:20}, {x:1050,y:375,w:140,h:20},
+      // Corredor -> sala/quarto
+      {x:380,y:200,w:20,h:105}, {x:380,y:395,w:20,h:125}, {x:380,y:610,w:20,h:90},
+      // Casa -> quintal
+      {x:400,y:530,w:130,h:20}, {x:620,y:530,w:190,h:20}, {x:900,y:530,w:290,h:20}
+    ],
+    doors: [
+      {x:830,y:280,w:20,h:90}, {x:830,y:425,w:20,h:80}, {x:960,y:375,w:90,h:20},
+      {x:380,y:305,w:20,h:90}, {x:380,y:520,w:20,h:90}, {x:530,y:530,w:90,h:20}, {x:810,y:530,w:90,h:20}
     ]
   }
 ];
@@ -224,6 +262,7 @@ function makePlayer(id, name) {
     spectatorUntilRound: 0,       // número da última rodada em que deve ficar fora
     lastShot: 0,
     lastBomb: 0,
+    lastChat: 0,
     lastSeen: Date.now(),        // heartbeat
     connected: true,
     disconnectedAt: 0,
@@ -316,7 +355,7 @@ wss.on('connection', (ws, req) => {
   }
   ws.playerId = id;
 
-  ws.send(JSON.stringify({ type: 'init', id, sessionToken: token, resumed, world: WORLD, weapons: WEAPONS, utilities: UTILITIES, skins: SKINS, map: currentMap(), killReward: KILL_REWARD, phase, timeLeft: Math.max(0, Math.round((phaseEndsAt - Date.now()) / 1000)) }));
+  ws.send(JSON.stringify({ type: 'init', id, sessionToken: token, resumed, build: BUILD, world: WORLD, weapons: WEAPONS, utilities: UTILITIES, skins: SKINS, map: currentMap(), killReward: KILL_REWARD, phase, timeLeft: Math.max(0, Math.round((phaseEndsAt - Date.now()) / 1000)) }));
 
   ws.on('message', (raw) => {
     let msg;
@@ -327,7 +366,7 @@ wss.on('connection', (ws, req) => {
 
     switch (msg.type) {
       case 'setName':
-        pl.name = String(msg.name || '').slice(0, 12) || pl.name;
+        pl.name = String(msg.name || '').replace(/[\x00-\x1F\x7F<>]/g, '').trim().slice(0, 12) || pl.name;
         if (typeof msg.level === 'number') {
           pl.level = Math.max(1, Math.min(999, msg.level | 0));
           const buff = levelBuff(pl.level);
@@ -369,6 +408,9 @@ wss.on('connection', (ws, req) => {
         break;
       case 'chat':
         handleChat(pl, msg.text);
+        break;
+      case 'pause':
+        resetInput(pl);
         break;
       case 'pong':
         break; // resposta ao ping, já atualizou lastSeen
@@ -501,8 +543,11 @@ function explodeBomb(b) {
 }
 
 function handleChat(pl, text) {
-  text = String(text || '').slice(0, 120).trim();
+  const now = Date.now();
+  if (now - pl.lastChat < 550) return;
+  text = String(text || '').replace(/[\x00-\x1F\x7F]/g, ' ').slice(0, 120).trim();
   if (!text) return;
+  pl.lastChat = now;
   chatLog.push({ name: pl.name, color: pl.color, text });
 }
 
