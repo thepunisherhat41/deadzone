@@ -45,67 +45,70 @@ const WEAPONS = {
 };
 
 // ==================== MAPAS: CASAS BRASILEIRAS ====================
-// Cada mapa é a planta de uma casa. As paredes formam cômodos com aberturas (portas).
-// rooms: rótulos dos cômodos (só visual, o cliente desenha o nome no piso).
+// Casa média no centro (cômodos conectados por portas) + área aberta em volta (quintal/rua).
+// rooms: rótulos e cor de piso de cada área. walls: paredes que bloqueiam de verdade.
 const MAPS = [
   {
+    name: 'Sobrado dos Alpes 859',
+    floor: '#20252e', // rua/calçada escura em volta
+    rooms: [
+      { x: 520, y: 120, w: 560, h: 180, label: '🚗 Garagem',   color: '#2c3038' },
+      { x: 520, y: 320, w: 300, h: 240, label: '🛋️ Sala',      color: '#4a3f30' },
+      { x: 840, y: 320, w: 240, h: 240, label: '🍳 Cozinha',   color: '#3f4535' },
+      { x: 520, y: 580, w: 240, h: 240, label: '🚿 Banheiro',  color: '#35434a' },
+      { x: 780, y: 580, w: 300, h: 240, label: '🛏️ Quarto',    color: '#453540' },
+      { x: 140, y: 300, w: 340, h: 540, label: '🌳 Quintal',    color: '#2e4a32' },
+      { x: 1120, y: 300, w: 340, h: 540, label: '🧺 Lavanderia', color: '#35454a' }
+    ],
+    walls: [
+      // contorno da casa (com aberturas = portas)
+      { x: 520, y: 300, w: 560, h: 20 },             // parede sob a garagem
+      { x: 500, y: 320, w: 20, h: 240 },             // lateral esq sala
+      { x: 1080, y: 320, w: 20, h: 500 },            // lateral dir cozinha/quarto
+      { x: 820, y: 340, w: 20, h: 200 },             // sala|cozinha (porta embaixo)
+      { x: 520, y: 560, w: 240, h: 20 },             // sala/banheiro (porta na direita)
+      { x: 840, y: 560, w: 240, h: 20 },             // cozinha/quarto
+      { x: 760, y: 600, w: 20, h: 220 },             // banheiro|quarto
+      // paredes externas que separam quintal e lavanderia da rua (com passagens)
+      { x: 480, y: 300, w: 20, h: 180 }, { x: 480, y: 620, w: 20, h: 220 },
+      { x: 1100, y: 300, w: 20, h: 180 }, { x: 1100, y: 620, w: 20, h: 220 }
+    ]
+  },
+  {
     name: 'Casa da Vó',
-    floor: '#3a3228',
+    floor: '#241f18',
     rooms: [
-      { x: 90,  y: 90,  w: 360, h: 260, label: '🛋️ Sala',      color: '#4a3f30' },
-      { x: 470, y: 90,  w: 340, h: 260, label: '🍳 Cozinha',   color: '#3f4535' },
-      { x: 830, y: 90,  w: 300, h: 260, label: '🚿 Banheiro',  color: '#35434a' },
-      { x: 90,  y: 560, w: 360, h: 300, label: '🛏️ Quarto',    color: '#453540' },
-      { x: 470, y: 560, w: 340, h: 300, label: '🧺 Lavanderia', color: '#35454a' },
-      { x: 830, y: 560, w: 300, h: 300, label: '🌳 Quintal',    color: '#2e4a32' }
+      { x: 430, y: 160, w: 340, h: 240, label: '🛋️ Sala',      color: '#4a3f30' },
+      { x: 800, y: 160, w: 320, h: 240, label: '🍳 Cozinha',   color: '#3f4535' },
+      { x: 430, y: 430, w: 340, h: 260, label: '🛏️ Quarto',    color: '#453540' },
+      { x: 800, y: 430, w: 320, h: 260, label: '🚿 Banheiro',  color: '#35434a' },
+      { x: 120, y: 200, w: 280, h: 700, label: '🌳 Quintal',    color: '#2e4a32' },
+      { x: 430, y: 720, w: 690, h: 180, label: '🧺 Área/Varal', color: '#35454a' }
     ],
     walls: [
-      // divisórias horizontais (corredor no meio, y ~ 400-520)
-      { x: 90,  y: 350, w: 300, h: 30 }, { x: 440, y: 350, w: 250, h: 30 }, { x: 740, y: 350, w: 390, h: 30 },
-      { x: 90,  y: 530, w: 300, h: 30 }, { x: 440, y: 530, w: 250, h: 30 }, { x: 740, y: 530, w: 390, h: 30 },
-      // divisórias verticais superiores (com portas = aberturas)
-      { x: 450, y: 90,  w: 20, h: 120 }, { x: 810, y: 90,  w: 20, h: 120 },
-      // divisórias verticais inferiores
-      { x: 450, y: 620, w: 20, h: 240 }, { x: 810, y: 620, w: 20, h: 240 }
+      { x: 770, y: 160, w: 20, h: 180 },   // sala|cozinha (porta embaixo)
+      { x: 430, y: 400, w: 340, h: 20 },   // sala/quarto
+      { x: 800, y: 400, w: 320, h: 20 },   // cozinha/banheiro
+      { x: 770, y: 470, w: 20, h: 220 },   // quarto|banheiro
+      { x: 400, y: 200, w: 20, h: 260 }, { x: 400, y: 560, w: 20, h: 340 }, // quintal
+      { x: 430, y: 700, w: 300, h: 20 }, { x: 820, y: 700, w: 300, h: 20 }  // área embaixo
     ]
   },
   {
-    name: 'Sobrado do Zé',
-    floor: '#33383a',
+    name: 'Kitnet do Zé',
+    floor: '#1e2226',
     rooms: [
-      { x: 90,  y: 90,  w: 420, h: 300, label: '🍳 Cozinha',   color: '#3f4535' },
-      { x: 540, y: 90,  w: 260, h: 300, label: '🚿 Banheiro',  color: '#35434a' },
-      { x: 830, y: 90,  w: 300, h: 300, label: '🛏️ Quarto',    color: '#453540' },
-      { x: 90,  y: 600, w: 500, h: 280, label: '🛋️ Sala',      color: '#4a3f30' },
-      { x: 640, y: 600, w: 490, h: 280, label: '🌳 Quintal',    color: '#2e4a32' }
+      { x: 400, y: 200, w: 420, h: 320, label: '🛋️ Sala/Quarto', color: '#453f38' },
+      { x: 850, y: 200, w: 340, h: 160, label: '🍳 Cozinha',      color: '#3f4535' },
+      { x: 850, y: 390, w: 340, h: 130, label: '🚿 Banheiro',     color: '#35434a' },
+      { x: 120, y: 200, w: 250, h: 500, label: '🚪 Corredor',     color: '#2c3038' },
+      { x: 400, y: 550, w: 790, h: 200, label: '🌳 Quintal',       color: '#2e4a32' }
     ],
     walls: [
-      // corredor lateral vertical (esquerda) separando cômodos
-      { x: 510, y: 90,  w: 30, h: 180 }, { x: 800, y: 90,  w: 30, h: 300 },
-      // parede central horizontal (corredor central)
-      { x: 90,  y: 420, w: 350, h: 30 }, { x: 540, y: 420, w: 220, h: 30 }, { x: 860, y: 420, w: 270, h: 30 },
-      { x: 90,  y: 570, w: 350, h: 30 }, { x: 610, y: 570, w: 520, h: 30 },
-      // divisória inferior
-      { x: 590, y: 600, w: 30, h: 280 }
-    ]
-  },
-  {
-    name: 'Kitnet Apertada',
-    floor: '#2e3338',
-    rooms: [
-      { x: 90,  y: 90,  w: 500, h: 340, label: '🛋️ Sala/Quarto', color: '#453f38' },
-      { x: 650, y: 90,  w: 480, h: 200, label: '🍳 Cozinha',      color: '#3f4535' },
-      { x: 650, y: 350, w: 220, h: 250, label: '🚿 Banheiro',     color: '#35434a' },
-      { x: 90,  y: 620, w: 340, h: 240, label: '🧺 Lavanderia',   color: '#35454a' },
-      { x: 490, y: 620, w: 640, h: 240, label: '🌳 Quintal',       color: '#2e4a32' }
-    ],
-    walls: [
-      { x: 590, y: 90,  w: 30, h: 250 }, // parede sala/cozinha (porta embaixo)
-      { x: 650, y: 300, w: 220, h: 30 }, // cozinha/banheiro
-      { x: 870, y: 350, w: 30, h: 180 }, // lateral banheiro
-      { x: 90,  y: 590, w: 200, h: 30 }, { x: 360, y: 590, w: 100, h: 30 }, // corredor
-      { x: 490, y: 590, w: 300, h: 30 }, { x: 860, y: 590, w: 270, h: 30 },
-      { x: 460, y: 620, w: 30, h: 240 } // lavanderia/quintal
+      { x: 820, y: 200, w: 20, h: 320 },   // sala|cozinha/banheiro
+      { x: 850, y: 360, w: 340, h: 20 },   // cozinha/banheiro
+      { x: 370, y: 200, w: 20, h: 200 }, { x: 370, y: 480, w: 20, h: 220 }, // corredor (porta)
+      { x: 400, y: 520, w: 300, h: 20 }, { x: 780, y: 520, w: 410, h: 20 }  // quintal (passagem)
     ]
   }
 ];
@@ -321,7 +324,6 @@ function tallyVotesAndBan() {
 
 function nextRound() {
   // sorteia novo mapa, restaura banidos, reseta placar da tela
-  tallyVotesAndBan();
   currentMapIndex = Math.floor(Math.random() * MAPS.length);
   phase = 'playing';
   phaseEndsAt = Date.now() + ROUND_MS;
@@ -340,12 +342,23 @@ function nextRound() {
   chatLog.push({ name: 'sistema', color: '#4ade5f', text: `🏠 Nova tela: ${initMap.name}` });
 }
 
-// gerência de tempo das fases
+// gerência de tempo das fases:
+// playing -> (fim) startVoting -> (fim) tallyVotesAndBan (ejeta, curto intervalo mostrando resultado) -> nextRound
+let banFreezeUntil = 0;
 setInterval(() => {
-  if (Date.now() < phaseEndsAt) return;
-  if (phase === 'playing') startVoting();
-  else nextRound();
-}, 500);
+  const now = Date.now();
+  if (now < phaseEndsAt) return;
+  if (phase === 'playing') {
+    startVoting();
+  } else if (phase === 'voting') {
+    // fim da votação: apura e ejeta, dá 4s mostrando o banido antes de trocar de tela
+    tallyVotesAndBan();
+    phase = 'result';
+    phaseEndsAt = now + 4000;
+  } else if (phase === 'result') {
+    nextRound();
+  }
+}, 300);
 
 function handleVote(voter, targetId) {
   if (phase !== 'voting') return;
