@@ -82,6 +82,19 @@
   .ownedBtn { background: #2e8b57; color: #fff; }
   .cantBtn { background: #393b45; color: #8c909c; }
   #shopClose { width: 100%; margin-top: 7px; padding: 12px; background: var(--dz-red); color: #fff; border: none; border-radius: 11px; font-weight: 950; }
+  .shopSectionTitle { margin: 16px 2px 8px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.08); color: #9fc4e8; font-size: 11px; letter-spacing: 2.2px; font-weight: 950; }
+  .shopSectionTitle:first-child { margin-top: 2px; padding-top: 0; border-top: none; }
+  .shopMetaPill { display:inline-block; margin-top:4px; padding:2px 6px; border-radius:999px; background:rgba(255,255,255,.06); color:#d8dfec; font-size:9px; font-weight:800; }
+  .shopIcon { width: 40px; height: 40px; flex: 0 0 40px; display:inline-flex; align-items:center; justify-content:center; }
+  .shopIcon svg { width:100%; height:100%; display:block; filter:drop-shadow(0 2px 2px rgba(0,0,0,.35)); }
+
+  #bombBtn { position: fixed; right: 70px; bottom: 196px; z-index: 13; width: 62px; height: 62px; border-radius: 50%; border: 2px solid rgba(255,210,59,.65); background: radial-gradient(circle at 35% 30%,rgba(255,210,59,.26),rgba(20,18,12,.92)); color:#fff; box-shadow: 0 7px 22px rgba(0,0,0,.35), inset 0 0 18px rgba(255,210,59,.08); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0; transition:opacity .2s, transform .12s; }
+  #bombBtn:active { transform:scale(.94); }
+  #bombBtn.disabled { opacity:.38; filter:grayscale(.55); }
+  #bombBtn .bombIcon { width:32px; height:32px; display:block; }
+  #bombBtn .bombIcon svg { width:100%; height:100%; display:block; }
+  #bombCount { font-size:10px; line-height:1; font-weight:950; color:var(--dz-yellow); margin-top:-2px; }
+  body.spectating #bombBtn { opacity:.12; pointer-events:none; }
 
   /* Chat */
   #chatBox { position: fixed; bottom: 180px; left: 14px; width: 290px; max-width: 58%; z-index: 10; pointer-events: none; }
@@ -141,6 +154,8 @@
     #aimKnob { width: 60px; height: 60px; left: 31px; top: 31px; }
     #aimKnob .weaponIcon { width: 36px; height:36px; }
     #actions { bottom: max(22px, env(safe-area-inset-bottom)); right: 18px; }
+    #bombBtn { right: 48px; bottom: 160px; width:54px; height:54px; }
+    #bombBtn .bombIcon { width:28px; height:28px; }
     #aimHint { display: none; }
     #weapons { bottom: 158px; left: 14px; right: auto; max-width: 52px; flex-direction: column; gap: 6px; align-items: flex-start; }
     .wbtn { padding: 5px; width: 48px; height: 48px; min-height: 48px; justify-content: center; border-radius: 11px; }
@@ -208,6 +223,7 @@
 <div id="stick"><div id="stickBase"></div><div id="stickKnob"></div></div>
 
 <div id="weapons"></div>
+<button id="bombBtn" class="disabled" title="Pinga do Lelê • Q"><span class="bombIcon" id="bombIcon"></span><small id="bombCount">0</small></button>
 
 <div id="actions">
   <div id="aimStick"><div id="aimBase"></div><div id="aimKnob"><span class="weaponIcon" id="aimWeaponIcon"></span></div></div>
@@ -263,7 +279,7 @@ function resize() {
 }
 window.addEventListener('resize', resize); resize();
 
-let ws, myId = null, world = { w: 1600, h: 1200 }, weapons = {}, gameMap = { walls: [], floor: '#2a2e3a' };
+let ws, myId = null, world = { w: 1600, h: 1200 }, weapons = {}, utilities = {}, skins = {}, gameMap = { walls: [], floor: '#2a2e3a' };
 let currentMapName = '';
 let state = { players: [], bullets: [], events: [], chat: [], phase: 'playing' };
 let spectateTargetId = null;
@@ -371,6 +387,8 @@ const sound = {
   coco:    () => { noise(0.20,0.14,'lowpass',650); tone(105,0.20,'sine',0.09,52); },
   // espada-de-são-jorge: folha cortando o ar, sem som metálico
   espada:  () => { noise(0.15,0.075,'bandpass',1700); setTimeout(()=>tone(260,0.07,'triangle',0.06,170),55); },
+  bomb:    () => { noise(0.34,0.19,'lowpass',820); tone(82,0.36,'sine',0.16,38); setTimeout(()=>noise(0.18,0.08,'highpass',1500),30); },
+  armor:   () => { tone(760,0.07,'square',0.05,560); tone(1080,0.04,'sine',0.04,820); },
   death:   () => { tone(190,0.42,'sawtooth',0.17,42); noise(0.18,0.05,'lowpass',500); },
   hit:     () => tone(470, 0.045, 'square', 0.055, 310),
   buy:     () => { tone(620,0.08,'sine',0.13); setTimeout(()=>tone(920,0.1,'sine',0.13),80); },
@@ -390,6 +408,21 @@ function spawnSpark(x, y) {
     particles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 1, r: 1.5 + Math.random() * 2, type: 'spark' });
   }
 }
+function spawnArmorSpark(x, y) {
+  for (let i = 0; i < 12; i++) {
+    const a = Math.random() * Math.PI * 2, sp = 1.5 + Math.random() * 4;
+    particles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 1, r: 1.5 + Math.random() * 2.5, type: 'armor' });
+  }
+}
+function spawnExplosion(x, y, radius) {
+  const count = 44;
+  for (let i = 0; i < count; i++) {
+    const a = Math.random() * Math.PI * 2, sp = 2 + Math.random() * 7;
+    particles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 1, r: 3 + Math.random() * 6, type: i % 3 === 0 ? 'smoke' : 'fire' });
+  }
+  decals.push({ x, y, r: 4, maxR: Math.min(48, (radius || 150) * .32), life: .8, burn: true });
+}
+
 function addDeathPool(x, y) {
   decals.push({ x, y, r: 4, maxR: 30 + Math.random() * 20, life: 1 });
   spawnBlood(x, y, Math.random() * Math.PI * 2, 30);
@@ -402,7 +435,7 @@ function connect() {
   ws.onmessage = (ev) => {
     const msg = JSON.parse(ev.data);
     if (msg.type === 'init') {
-      myId = msg.id; world = msg.world; weapons = msg.weapons; gameMap = msg.map; currentMapName = (msg.map && msg.map.name) || '';
+      myId = msg.id; world = msg.world; weapons = msg.weapons; utilities = msg.utilities || {}; skins = msg.skins || {}; gameMap = msg.map; currentMapName = (msg.map && msg.map.name) || '';
       buildWeaponBar(); buildShop(); setAimWeaponIcon(currentWeapon);
     } else if (msg.type === 'state') {
       state = msg;
@@ -415,6 +448,8 @@ function connect() {
       for (const id in render) if (!state.players.find(p => p.id == id)) delete render[id];
       if (msg.events) for (const e of msg.events) {
         if (e.kind === 'hit') { spawnBlood(e.x, e.y, e.angle, 8); shake = Math.min(shake + 3, 10); sound.hit(); }
+        else if (e.kind === 'armorHit') { spawnArmorSpark(e.x, e.y); sound.armor(); }
+        else if (e.kind === 'bombExplosion') { spawnExplosion(e.x, e.y, e.radius || 150); shake = Math.min(shake + 10, 16); sound.bomb(); }
         else if (e.kind === 'death') { addDeathPool(e.x, e.y); sound.death(); }
         else if (e.kind === 'spark') spawnSpark(e.x, e.y);
         else if (e.kind === 'muzzle') {
@@ -441,6 +476,9 @@ function connect() {
     } else if (msg.type === 'buyResult') {
       if (msg.ok) { currentWeapon = msg.weapon; setAimWeaponIcon(currentWeapon); sound.buy(); flashMsg('Comprado! ' + weapons[msg.weapon].name); }
       else flashMsg('❌ ' + msg.reason);
+    } else if (msg.type === 'shopResult') {
+      if (msg.ok) { sound.buy(); flashMsg(msg.message || 'Compra realizada!'); }
+      else flashMsg('❌ ' + (msg.reason || 'não foi possível comprar'));
     }
   };
   ws.onclose = () => setTimeout(connect, 1000);
@@ -498,6 +536,45 @@ function weaponIconSvg(key) {
       <path d="M26 42l8-5M25 32l10-5M27 23l7-4" stroke="#1d6d34" stroke-width="2" opacity=".8"/>
     </g></svg>`;
 }
+function utilityIconSvg(key) {
+  const open = '<svg viewBox="0 0 64 64" aria-hidden="true">';
+  if (key === 'mamaeMarcia') return open + `
+    <path d="M18 12l9 6h10l9-6 8 10-7 7v25H17V29l-7-7z" fill="#596477" stroke="#d8e0ea" stroke-width="3"/>
+    <path d="M25 18v12h14V18M22 35h20M25 41h14" fill="none" stroke="#2c3441" stroke-width="3"/>
+    <path d="M25 27h14v11H25z" fill="#313846" stroke="#9ca8b8" stroke-width="2"/>
+    <text x="32" y="35" text-anchor="middle" font-size="9" font-weight="900" fill="#ffd23b">M</text>
+    </svg>`;
+  return open + `
+    <g transform="rotate(-12 32 32)">
+      <path d="M22 9h20l-2 9c6 5 9 13 8 23-1 10-8 16-16 16S17 51 16 41c-1-10 2-18 8-23z" fill="#c98737" stroke="#5a3218" stroke-width="3"/>
+      <rect x="24" y="5" width="16" height="8" rx="2" fill="#e8e4d7" stroke="#5a3218" stroke-width="2"/>
+      <rect x="21" y="28" width="22" height="12" rx="3" fill="#efe3b7" stroke="#7d5429" stroke-width="2"/>
+      <text x="32" y="36" text-anchor="middle" font-size="6" font-weight="900" fill="#5b361b">LELÊ</text>
+      <path d="M40 7c7-5 10-3 10 1 0 3-3 4-6 5" fill="none" stroke="#ff5b3b" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="50" cy="6" r="3" fill="#ffd23b"/>
+    </g></svg>`;
+}
+
+function skinIconSvg(key) {
+  const open = '<svg viewBox="0 0 64 64" aria-hidden="true">';
+  if (key === 'gravida') return open + `
+    <circle cx="32" cy="16" r="9" fill="#70452f"/>
+    <path d="M22 13c1-9 20-12 22 1-5-3-7-5-12-4-4 0-7 2-10 3z" fill="#171314"/>
+    <circle cx="24" cy="10" r="4" fill="#171314"/><circle cx="40" cy="9" r="4" fill="#171314"/>
+    <path d="M24 26c5-4 11-4 16 0 5 5 5 14 2 24H21c-3-9-3-18 3-24z" fill="#b6488c" stroke="#72295a" stroke-width="2"/>
+    <ellipse cx="36" cy="39" rx="11" ry="10" fill="#c65b9d" stroke="#72295a" stroke-width="2"/>
+    <path d="M25 50l-2 10M39 50l2 10" stroke="#70452f" stroke-width="5" stroke-linecap="round"/>
+    </svg>`;
+  if (key === 'capivara') return open + `
+    <ellipse cx="31" cy="36" rx="21" ry="15" fill="#9a6740" stroke="#5d3822" stroke-width="3"/>
+    <ellipse cx="44" cy="29" rx="13" ry="11" fill="#aa754c" stroke="#5d3822" stroke-width="3"/>
+    <circle cx="39" cy="20" r="4" fill="#805234"/><circle cx="50" cy="21" r="4" fill="#805234"/>
+    <circle cx="47" cy="27" r="2" fill="#111"/><ellipse cx="54" cy="33" rx="4" ry="3" fill="#3a2418"/>
+    <path d="M18 47v8M29 49v8M39 49v8M48 46v8" stroke="#5d3822" stroke-width="5" stroke-linecap="round"/>
+    </svg>`;
+  return open + `<path d="M20 14c4-8 20-8 24 0 4 7 2 29-3 37-4 6-14 6-18 0-5-8-7-30-3-37z" fill="#49bde8" stroke="#185c79" stroke-width="3"/><rect x="28" y="18" width="18" height="10" rx="5" fill="#d7f4ff" stroke="#185c79" stroke-width="2"/></svg>`;
+}
+
 function setAimWeaponIcon(key) {
   const el = document.getElementById('aimWeaponIcon');
   if (el) el.innerHTML = weaponIconSvg(key);
@@ -532,43 +609,109 @@ function refreshWeaponBar() {
 }
 
 // ---- Loja ----
+function makeShopTitle(text) {
+  const title = document.createElement('div');
+  title.className = 'shopSectionTitle'; title.textContent = text;
+  return title;
+}
+function makeShopRow(kind, key, iconHtml, title, description) {
+  const row = document.createElement('div');
+  row.className = 'shopItem'; row.dataset.kind = kind; row.dataset.key = key;
+  row.innerHTML = `<div class="info"><span class="shopIcon">${iconHtml}</span><div class="infoText">${escapeHtml(title)}<small>${description}</small></div></div>`;
+  const btn = document.createElement('button'); row.appendChild(btn);
+  return row;
+}
 function buildShop() {
   const items = document.getElementById('shopItems');
   items.innerHTML = '';
+
+  items.appendChild(makeShopTitle('🔫 ARMAS'));
   for (const key in weapons) {
     const w = weapons[key];
-    const row = document.createElement('div');
-    row.className = 'shopItem'; row.dataset.w = key;
     const cadence = Math.round(1000 / w.cooldown * 10) / 10;
-    row.innerHTML = `<div class="info"><span class="weaponIcon">${weaponIconSvg(key)}</span><div class="infoText">${escapeHtml(w.name)}<small>${escapeHtml(w.description || '')}<br>Dano ${w.damage} • alcance ${w.range}px • ${cadence}/s</small></div></div>`;
-    const btn = document.createElement('button');
-    row.appendChild(btn); items.appendChild(row);
-    btn.onclick = () => send({ type: 'buy', weapon: key });
+    const row = makeShopRow('weapon', key, weaponIconSvg(key), w.name,
+      `${escapeHtml(w.description || '')}<br>Dano ${w.damage} • alcance ${w.range}px • ${cadence}/s`);
+    items.appendChild(row);
+  }
+
+  items.appendChild(makeShopTitle('🛡️ UTILIDADES BARATAS'));
+  for (const key in utilities) {
+    const u = utilities[key];
+    let extra = '';
+    if (key === 'mamaeMarcia') extra = `<br><span class="shopMetaPill">+${u.armor} ARMOR</span>`;
+    if (key === 'pingaLele') extra = `<br><span class="shopMetaPill">${u.damage} dano • raio ${u.radius}px • máx. ${u.maxCarry}</span>`;
+    const row = makeShopRow('utility', key, utilityIconSvg(key), u.name, `${escapeHtml(u.description || '')}${extra}`);
+    items.appendChild(row);
+  }
+
+  items.appendChild(makeShopTitle('🧍 PERSONAGENS'));
+  for (const key in skins) {
+    const sk = skins[key];
+    const row = makeShopRow('skin', key, skinIconSvg(key), sk.name, escapeHtml(sk.description || ''));
+    items.appendChild(row);
   }
   refreshShop();
 }
 function refreshShop() {
   if (!myData) return;
-  document.getElementById('shopPts').textContent = 'Pontos: ' + myData.points;
+  document.getElementById('shopPts').textContent = `Pontos: ${myData.points} • 🛡️ ${myData.armor || 0} • 🍾 ${myData.bombs || 0}`;
   document.querySelectorAll('#shopItems .shopItem').forEach(row => {
-    const k = row.dataset.w, w = weapons[k], btn = row.querySelector('button');
-    if (myData.owned[k]) {
-      btn.textContent = k === currentWeapon ? 'Equipado' : 'Equipar';
-      btn.className = 'ownedBtn';
-      btn.onclick = () => { currentWeapon = k; setAimWeaponIcon(k); send({ type: 'switchWeapon', weapon: k }); closeShop(); };
-    } else if (myData.points >= w.cost) {
-      btn.textContent = 'Comprar ' + w.cost;
-      btn.className = 'buyBtn'; btn.onclick = () => send({ type: 'buy', weapon: k });
-    } else {
-      btn.textContent = w.cost + ' pts'; btn.className = 'cantBtn'; btn.onclick = null;
+    const kind = row.dataset.kind, key = row.dataset.key, btn = row.querySelector('button');
+    if (kind === 'weapon') {
+      const w = weapons[key];
+      if (myData.owned[key]) {
+        btn.textContent = key === currentWeapon ? 'Equipado' : 'Equipar';
+        btn.className = 'ownedBtn';
+        btn.onclick = () => { currentWeapon = key; setAimWeaponIcon(key); send({ type: 'switchWeapon', weapon: key }); closeShop(); };
+      } else if (myData.points >= w.cost) {
+        btn.textContent = `Comprar ${w.cost}`; btn.className = 'buyBtn';
+        btn.onclick = () => send({ type: 'buy', weapon: key });
+      } else { btn.textContent = `${w.cost} pts`; btn.className = 'cantBtn'; btn.onclick = null; }
+      return;
+    }
+    if (kind === 'utility') {
+      const u = utilities[key];
+      if (key === 'mamaeMarcia' && (myData.armor || 0) >= (u.armor || 60)) {
+        btn.textContent = 'Protegido'; btn.className = 'ownedBtn'; btn.onclick = null;
+      } else if (key === 'pingaLele' && (myData.bombs || 0) >= (u.maxCarry || 3)) {
+        btn.textContent = `Cheio x${myData.bombs}`; btn.className = 'ownedBtn'; btn.onclick = null;
+      } else if (myData.points >= u.cost) {
+        btn.textContent = key === 'pingaLele' ? `+1 • ${u.cost}` : `Comprar ${u.cost}`;
+        btn.className = 'buyBtn'; btn.onclick = () => send({ type: 'buyUtility', item: key });
+      } else { btn.textContent = `${u.cost} pts`; btn.className = 'cantBtn'; btn.onclick = null; }
+      return;
+    }
+    if (kind === 'skin') {
+      const sk = skins[key], owned = !!(myData.ownedSkins && myData.ownedSkins[key]);
+      if (owned) {
+        btn.textContent = myData.skin === key ? 'Usando' : 'Usar'; btn.className = 'ownedBtn';
+        btn.onclick = myData.skin === key ? null : () => { send({ type: 'switchSkin', skin: key }); closeShop(); };
+      } else if (myData.points >= sk.cost) {
+        btn.textContent = `Comprar ${sk.cost}`; btn.className = 'buyBtn'; btn.onclick = () => send({ type: 'buySkin', skin: key });
+      } else { btn.textContent = `${sk.cost} pts`; btn.className = 'cantBtn'; btn.onclick = null; }
     }
   });
+  updateBombButton();
 }
 function openShop() { document.getElementById('shop').style.display = 'flex'; refreshShop(); }
 function closeShop() { document.getElementById('shop').style.display = 'none'; }
 document.getElementById('shopBtn').onclick = openShop;
 document.getElementById('shopClose').onclick = closeShop;
 document.getElementById('deadShop').onclick = openShop;
+
+function updateBombButton() {
+  const btn = document.getElementById('bombBtn');
+  const count = myData ? (myData.bombs || 0) : 0;
+  document.getElementById('bombCount').textContent = `x${count}`;
+  btn.classList.toggle('disabled', count <= 0);
+  const icon = document.getElementById('bombIcon'); if (icon && !icon.dataset.ready) { icon.innerHTML = utilityIconSvg('pingaLele'); icon.dataset.ready = '1'; }
+}
+function useBomb() {
+  if (!canControlPlayer()) return;
+  if (!myData || (myData.bombs || 0) <= 0) { flashMsg('🍾 Compre uma Pinga do Lelê na loja.'); openShop(); return; }
+  send({ type: 'useBomb' });
+}
+document.getElementById('bombBtn').onclick = useBomb;
 
 // ---- Votação ----
 let myVote = null;
@@ -739,6 +882,7 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'a' || e.key === 'ArrowLeft') input.left = true;
   if (e.key === 'd' || e.key === 'ArrowRight') input.right = true;
   if (e.key === ' ') send({ type: 'attack' });
+  if (e.key.toLowerCase() === 'q') useBomb();
   if (e.key === 'Enter') { chatWrap.style.display = 'flex'; chatInput.focus(); }
 });
 window.addEventListener('keyup', (e) => {
@@ -791,6 +935,28 @@ function drawPoopSprite(x, y, scale, rot) {
   ctx.beginPath(); ctx.arc(-5,3,6,0,Math.PI*2); ctx.arc(4,3,7,0,Math.PI*2); ctx.arc(0,-3,6,0,Math.PI*2); ctx.fill(); ctx.stroke();
   ctx.restore();
 }
+function drawBottleBombSprite(x, y, scale, rot) {
+  ctx.save(); ctx.translate(x,y); ctx.rotate(rot||0); ctx.scale(scale,scale);
+  ctx.fillStyle='#c98737'; ctx.strokeStyle='#5a3218'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(-7,-13); ctx.lineTo(7,-13); ctx.lineTo(8,-7); ctx.quadraticCurveTo(13,-2,12,8); ctx.quadraticCurveTo(11,15,0,16); ctx.quadraticCurveTo(-11,15,-12,8); ctx.quadraticCurveTo(-13,-2,-8,-7); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle='#eee6cf'; roundRect(-6,-18,12,6,2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle='#efe3b7'; roundRect(-8,-2,16,8,2); ctx.fill(); ctx.strokeStyle='#7d5429'; ctx.stroke();
+  ctx.fillStyle='#5b361b'; ctx.font='900 5px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('LELÊ',0,2);
+  ctx.strokeStyle='#ff684d'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(5,-17); ctx.quadraticCurveTo(12,-23,14,-18); ctx.stroke();
+  ctx.fillStyle='#ffd23b'; ctx.beginPath(); ctx.arc(14,-18,2.5,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+function drawArmorVestLocal(p, compact) {
+  if (!p || !(p.armor > 0)) return;
+  ctx.save();
+  const w = compact ? 20 : 24, h = compact ? 13 : 17;
+  ctx.fillStyle='rgba(79,91,108,.94)'; ctx.strokeStyle='#cbd5df'; ctx.lineWidth=1.5;
+  roundRect(-w/2,-7,w,h,4); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle='#252c36'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(-w/2+4,-2); ctx.lineTo(w/2-4,-2); ctx.stroke();
+  ctx.fillStyle='#ffd23b'; ctx.font='900 7px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('M',0,3);
+  ctx.restore();
+}
+
 function drawHeldWeapon(key) {
   if (key === 'grito') {
     ctx.fillStyle = '#77ddff'; ctx.strokeStyle='#176d91'; ctx.lineWidth=1.5;
@@ -801,32 +967,88 @@ function drawHeldWeapon(key) {
   else if (key === 'escova') drawHairBrushSprite(19,0,.72,0);
   else drawFlipFlopSprite(20,0,.78,0);
 }
-function drawBean(sx, sy, p, isMe) {
+function drawPlayerLabel(sx, sy, p, topY) {
+  const labelY = sy + (topY || -38);
+  ctx.textAlign='center'; ctx.fillStyle='#fff'; ctx.font='bold 12px sans-serif';
+  const label = (p.level && p.level > 1 ? 'Lv' + p.level + ' ' : '') + p.name;
+  ctx.strokeStyle='#000'; ctx.lineWidth=3; ctx.strokeText(label,sx,labelY); ctx.fillText(label,sx,labelY);
+  const maxHp = p.maxHp || 100, barY = labelY + 5;
+  ctx.fillStyle='rgba(0,0,0,.82)'; ctx.fillRect(sx-21,barY,42,6);
+  ctx.fillStyle = p.hp > maxHp*.5 ? '#4ade5f' : (p.hp > maxHp*.25 ? '#ffb03b' : '#ff3b52');
+  ctx.fillRect(sx-20,barY+1,40*Math.max(0,p.hp/maxHp),4);
+  if (p.armor > 0) {
+    ctx.fillStyle='rgba(0,0,0,.82)'; ctx.fillRect(sx-21,barY+7,42,4);
+    ctx.fillStyle='#91c7ff'; ctx.fillRect(sx-20,barY+8,40*Math.min(1,p.armor/60),2);
+  }
+}
+function drawDefaultBean(sx, sy, p, isMe) {
   const bob = p.moving ? Math.sin(animTime * 12 + p.id) * 3 : 0;
   const legSwing = p.moving ? Math.sin(animTime * 12 + p.id) * 5 : 0;
-  ctx.save(); ctx.translate(sx, sy + bob);
-  ctx.fillStyle = 'rgba(0,0,0,.3)';
-  ctx.beginPath(); ctx.ellipse(0, 20, 16, 6, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = shade(p.color, -30);
-  ctx.fillRect(-9, 14 - Math.max(0, legSwing), 7, 10 + Math.max(0, legSwing));
-  ctx.fillRect(2, 14 + Math.max(0, -legSwing), 7, 10 + Math.max(0, -legSwing));
-  ctx.fillStyle = p.color; roundRect(-15, -20, 30, 38, 15); ctx.fill();
-  ctx.fillStyle = shade(p.color, 40); roundRect(-8, -6, 16, 22, 8); ctx.fill();
-  ctx.strokeStyle = shade(p.color, -50); ctx.lineWidth = 2.5; roundRect(-15, -20, 30, 38, 15); ctx.stroke();
-  const ex = Math.cos(p.angle) * 5, ey = Math.sin(p.angle) * 3;
-  ctx.fillStyle = '#bfe6ff'; roundRect(-3 + ex, -14 + ey, 16, 11, 5); ctx.fill();
-  ctx.strokeStyle = shade(p.color, -50); ctx.lineWidth = 2; roundRect(-3 + ex, -14 + ey, 16, 11, 5); ctx.stroke();
-  ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.beginPath(); ctx.arc(2 + ex, -11 + ey, 2, 0, Math.PI * 2); ctx.fill();
+  ctx.save(); ctx.translate(sx, sy+bob);
+  ctx.fillStyle='rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(0,20,16,6,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle=shade(p.color,-30);
+  ctx.fillRect(-9,14-Math.max(0,legSwing),7,10+Math.max(0,legSwing));
+  ctx.fillRect(2,14+Math.max(0,-legSwing),7,10+Math.max(0,-legSwing));
+  ctx.fillStyle=p.color; roundRect(-15,-20,30,38,15); ctx.fill();
+  ctx.fillStyle=shade(p.color,40); roundRect(-8,-6,16,22,8); ctx.fill();
+  ctx.strokeStyle=shade(p.color,-50); ctx.lineWidth=2.5; roundRect(-15,-20,30,38,15); ctx.stroke();
+  drawArmorVestLocal(p,false);
+  const ex=Math.cos(p.angle)*5, ey=Math.sin(p.angle)*3;
+  ctx.fillStyle='#bfe6ff'; roundRect(-3+ex,-14+ey,16,11,5); ctx.fill();
+  ctx.strokeStyle=shade(p.color,-50); ctx.lineWidth=2; roundRect(-3+ex,-14+ey,16,11,5); ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,.6)'; ctx.beginPath(); ctx.arc(2+ex,-11+ey,2,0,Math.PI*2); ctx.fill();
   ctx.save(); ctx.rotate(p.angle); drawHeldWeapon(p.weapon); ctx.restore();
-  if (isMe) { ctx.strokeStyle = '#ffd23b'; ctx.lineWidth = 2; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.arc(0, 0, 26, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); }
+  if (isMe) { ctx.strokeStyle='#ffd23b'; ctx.lineWidth=2; ctx.setLineDash([4,4]); ctx.beginPath(); ctx.arc(0,0,27,0,Math.PI*2); ctx.stroke(); ctx.setLineDash([]); }
   ctx.restore();
-  ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.font = 'bold 12px sans-serif';
-  const label = (p.level && p.level > 1 ? 'Lv' + p.level + ' ' : '') + p.name;
-  ctx.strokeStyle = '#000'; ctx.lineWidth = 3; ctx.strokeText(label, sx, sy - 32); ctx.fillText(label, sx, sy - 32);
-  const maxHp = p.maxHp || 100;
-  ctx.fillStyle = '#000'; ctx.fillRect(sx - 20, sy - 28, 40, 5);
-  ctx.fillStyle = p.hp > maxHp * 0.5 ? '#4ade5f' : (p.hp > maxHp * 0.25 ? '#ffb03b' : '#ff3b52');
-  ctx.fillRect(sx - 20, sy - 28, 40 * Math.max(0, p.hp / maxHp), 5);
+  drawPlayerLabel(sx,sy+bob,p,-38);
+}
+function drawPregnantCharacter(sx, sy, p, isMe) {
+  const bob = p.moving ? Math.sin(animTime*11+p.id)*2 : 0;
+  const skin='#70452f', hair='#171314', dress='#b6488c';
+  ctx.save(); ctx.translate(sx,sy+bob);
+  ctx.fillStyle='rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(0,23,18,6,0,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle=skin; ctx.lineWidth=6; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(-7,13); ctx.lineTo(-8,24); ctx.moveTo(7,13); ctx.lineTo(8,24); ctx.stroke();
+  ctx.fillStyle=dress; ctx.strokeStyle='#702c58'; ctx.lineWidth=2.2; roundRect(-14,-10,28,29,12); ctx.fill(); ctx.stroke();
+  // barriga bem visível sem caricaturar o rosto ou a pele.
+  ctx.fillStyle='#c95da0'; ctx.strokeStyle='#702c58'; ctx.beginPath(); ctx.ellipse(5,7,13,12,-.08,0,Math.PI*2); ctx.fill(); ctx.stroke();
+  drawArmorVestLocal(p,true);
+  ctx.fillStyle=skin; ctx.beginPath(); ctx.arc(0,-19,10,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle=hair;
+  ctx.beginPath(); ctx.arc(0,-24,10,Math.PI,Math.PI*2); ctx.fill();
+  for (const [hx,hy,hr] of [[-8,-25,4],[8,-25,4],[-5,-30,4],[4,-30,4]]) { ctx.beginPath(); ctx.arc(hx,hy,hr,0,Math.PI*2); ctx.fill(); }
+  const ex=Math.cos(p.angle)*2.5, ey=Math.sin(p.angle)*1.5;
+  ctx.fillStyle='#181818'; ctx.beginPath(); ctx.arc(-3+ex,-19+ey,1.1,0,Math.PI*2); ctx.arc(3+ex,-19+ey,1.1,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#3d2018'; ctx.lineWidth=1.2; ctx.beginPath(); ctx.arc(0,-16,3,.2,Math.PI-.2); ctx.stroke();
+  ctx.save(); ctx.rotate(p.angle); drawHeldWeapon(p.weapon); ctx.restore();
+  if (isMe) { ctx.strokeStyle='#ffd23b'; ctx.lineWidth=2; ctx.setLineDash([4,4]); ctx.beginPath(); ctx.arc(0,0,29,0,Math.PI*2); ctx.stroke(); ctx.setLineDash([]); }
+  ctx.restore();
+  drawPlayerLabel(sx,sy+bob,p,-45);
+}
+function drawCapybaraCharacter(sx, sy, p, isMe) {
+  const bob = p.moving ? Math.sin(animTime*12+p.id)*2 : 0;
+  ctx.save(); ctx.translate(sx,sy+bob);
+  ctx.fillStyle='rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(0,17,22,7,0,0,Math.PI*2); ctx.fill();
+  ctx.save(); ctx.rotate(p.angle);
+  ctx.fillStyle='#9a6740'; ctx.strokeStyle='#5d3822'; ctx.lineWidth=2.3;
+  ctx.beginPath(); ctx.ellipse(-2,0,22,14,0,0,Math.PI*2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle='#aa754c'; ctx.beginPath(); ctx.ellipse(15,-2,13,11,0,0,Math.PI*2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle='#805234'; ctx.beginPath(); ctx.arc(10,-12,4,0,Math.PI*2); ctx.arc(20,-11,4,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#15110e'; ctx.beginPath(); ctx.arc(19,-5,1.7,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#3a2418'; ctx.beginPath(); ctx.ellipse(26,2,4,3,0,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#5d3822'; ctx.lineWidth=5; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(-13,9); ctx.lineTo(-13,19); ctx.moveTo(4,10); ctx.lineTo(4,20); ctx.stroke();
+  drawArmorVestLocal(p,true);
+  drawHeldWeapon(p.weapon);
+  ctx.restore();
+  if (isMe) { ctx.strokeStyle='#ffd23b'; ctx.lineWidth=2; ctx.setLineDash([4,4]); ctx.beginPath(); ctx.arc(0,0,31,0,Math.PI*2); ctx.stroke(); ctx.setLineDash([]); }
+  ctx.restore();
+  drawPlayerLabel(sx,sy+bob,p,-38);
+}
+function drawBean(sx, sy, p, isMe) {
+  if (p.skin === 'gravida') return drawPregnantCharacter(sx,sy,p,isMe);
+  if (p.skin === 'capivara') return drawCapybaraCharacter(sx,sy,p,isMe);
+  return drawDefaultBean(sx,sy,p,isMe);
 }
 function roundRect(x, y, w, h, r) {
   ctx.beginPath(); ctx.moveTo(x + r, y);
@@ -900,12 +1122,19 @@ function draw() {
   for (let x = 0; x <= world.w; x += tile) { ctx.beginPath(); ctx.moveTo(x - camX, -camY); ctx.lineTo(x - camX, world.h - camY); ctx.stroke(); }
   for (let y = 0; y <= world.h; y += tile) { ctx.beginPath(); ctx.moveTo(-camX, y - camY); ctx.lineTo(world.w - camX, y - camY); ctx.stroke(); }
 
-  // poças de sangue
+  // poças de sangue e marcas queimadas da Pinga do Lelê
   for (let i = decals.length - 1; i >= 0; i--) {
     const d = decals[i]; if (d.r < d.maxR) d.r += 1;
-    ctx.fillStyle = 'rgba(140,10,20,.75)'; ctx.beginPath(); ctx.arc(d.x - camX, d.y - camY, d.r, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = 'rgba(180,20,30,.6)'; ctx.beginPath(); ctx.arc(d.x - camX - d.r * 0.3, d.y - camY, d.r * 0.5, 0, Math.PI * 2); ctx.fill();
-    d.life -= 0.0015; if (d.life <= 0) decals.splice(i, 1);
+    if (d.burn) {
+      ctx.fillStyle = 'rgba(24,18,14,.62)'; ctx.beginPath(); ctx.arc(d.x-camX,d.y-camY,d.r,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,126,45,.22)'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(d.x-camX,d.y-camY,d.r*.72,0,Math.PI*2); ctx.stroke();
+      d.life -= .0025;
+    } else {
+      ctx.fillStyle = 'rgba(140,10,20,.75)'; ctx.beginPath(); ctx.arc(d.x - camX, d.y - camY, d.r, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(180,20,30,.6)'; ctx.beginPath(); ctx.arc(d.x - camX - d.r * 0.3, d.y - camY, d.r * 0.5, 0, Math.PI * 2); ctx.fill();
+      d.life -= 0.0015;
+    }
+    if (d.life <= 0) decals.splice(i, 1);
   }
   if (decals.length > 40) decals.splice(0, decals.length - 40);
 
@@ -1012,6 +1241,20 @@ function draw() {
     ctx.restore();
   }
 
+  // ---- PINGA DO LELÊ: garrafas-bomba em voo/no chão ----
+  for (const b of (state.bombs || [])) {
+    const bx=b.x-camX, by=b.y-camY;
+    ctx.save(); ctx.translate(bx,by);
+    const pulse = b.fuse < 450 ? 1 + Math.sin(animTime*30)*.12 : 1;
+    ctx.scale(pulse,pulse);
+    drawBottleBombSprite(0,0,.82,(b.a || 0) + animTime*5);
+    if (b.fuse < 600) {
+      ctx.strokeStyle=`rgba(255,70,50,${.45 + .35*Math.abs(Math.sin(animTime*22))})`; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(0,0,18,0,Math.PI*2); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   // ---- aura super sayajin (desenhada sob os jogadores) ----
   for (let i = auras.length - 1; i >= 0; i--) {
     const au = auras[i]; au.life -= 0.02;
@@ -1051,8 +1294,12 @@ function draw() {
     const pt = particles[i];
     pt.x += pt.vx; pt.y += pt.vy; pt.vy += 0.15; pt.vx *= 0.96; pt.life -= 0.03;
     if (pt.life <= 0) { particles.splice(i, 1); continue; }
-    ctx.fillStyle = pt.type === 'blood' ? `rgba(200,20,30,${pt.life})` : `rgba(255,220,120,${pt.life})`;
-    ctx.beginPath(); ctx.arc(pt.x - camX, pt.y - camY, pt.r * pt.life, 0, Math.PI * 2); ctx.fill();
+    if (pt.type === 'blood') ctx.fillStyle = `rgba(200,20,30,${pt.life})`;
+    else if (pt.type === 'armor') ctx.fillStyle = `rgba(145,199,255,${pt.life})`;
+    else if (pt.type === 'fire') ctx.fillStyle = `rgba(255,${110 + Math.floor(100*pt.life)},40,${pt.life})`;
+    else if (pt.type === 'smoke') ctx.fillStyle = `rgba(70,66,64,${pt.life*.7})`;
+    else ctx.fillStyle = `rgba(255,220,120,${pt.life})`;
+    ctx.beginPath(); ctx.arc(pt.x - camX, pt.y - camY, pt.r * Math.max(.25,pt.life), 0, Math.PI * 2); ctx.fill();
   }
 
   // reset da transform para o HUD (já é DOM, mas garante estado limpo)
@@ -1071,7 +1318,7 @@ function draw() {
   if (me) {
     document.getElementById('status').innerHTML = me.spectating
       ? `<b>👁 EXPECTADOR</b><br><span class="hudDim">rodada ${state.round || ''}</span><br>☠️ ${me.kills} • 💰 ${me.points}`
-      : `❤️ ${Math.max(0, me.hp)}/${me.maxHp || 100}<br>☠️ ${me.kills} • 💰 <b>${me.points}</b><br><span class="hudDim">R${state.round || 1}${timerStr ? ' • ⏱ '+timerStr : ''}</span>`;
+      : `❤️ ${Math.max(0, me.hp)}/${me.maxHp || 100}${me.armor > 0 ? ` • 🛡️ ${me.armor}` : ''}<br>☠️ ${me.kills} • 💰 <b>${me.points}</b> • 🍾 ${me.bombs || 0}<br><span class="hudDim">R${state.round || 1}${timerStr ? ' • ⏱ '+timerStr : ''}</span>`;
   } else document.getElementById('status').textContent = 'Conectando...';
 
   // respawn normal. Ejetado usa o modo espectador, nunca a tela de morte.
