@@ -36,56 +36,68 @@ const WEAPONS = {
   espada:  { name: 'Espada',        emoji: '⚔️', cost: 480, damage: 60, cooldown: 900, speed: 24, range: 1300, pellets: 1, tint: '#ffd23b' }
 };
 
-// ==================== MAPAS ====================
-// Cada mapa tem uma lista de paredes (retângulos) que bloqueiam movimento e tiro.
+// ==================== MAPAS: CASAS BRASILEIRAS ====================
+// Cada mapa é a planta de uma casa. As paredes formam cômodos com aberturas (portas).
+// rooms: rótulos dos cômodos (só visual, o cliente desenha o nome no piso).
 const MAPS = [
   {
-    name: 'A Nave',
-    floor: '#2a2e3a',
+    name: 'Casa da Vó',
+    floor: '#3a3228',
+    rooms: [
+      { x: 90,  y: 90,  w: 360, h: 260, label: '🛋️ Sala',      color: '#4a3f30' },
+      { x: 470, y: 90,  w: 340, h: 260, label: '🍳 Cozinha',   color: '#3f4535' },
+      { x: 830, y: 90,  w: 300, h: 260, label: '🚿 Banheiro',  color: '#35434a' },
+      { x: 90,  y: 560, w: 360, h: 300, label: '🛏️ Quarto',    color: '#453540' },
+      { x: 470, y: 560, w: 340, h: 300, label: '🧺 Lavanderia', color: '#35454a' },
+      { x: 830, y: 560, w: 300, h: 300, label: '🌳 Quintal',    color: '#2e4a32' }
+    ],
     walls: [
-      { x: 300, y: 200, w: 40, h: 300 },
-      { x: 300, y: 200, w: 320, h: 40 },
-      { x: 900, y: 300, w: 40, h: 400 },
-      { x: 700, y: 700, w: 400, h: 40 },
-      { x: 1200, y: 150, w: 40, h: 350 },
-      { x: 200, y: 850, w: 500, h: 40 }
+      // divisórias horizontais (corredor no meio, y ~ 400-520)
+      { x: 90,  y: 350, w: 300, h: 30 }, { x: 440, y: 350, w: 250, h: 30 }, { x: 740, y: 350, w: 390, h: 30 },
+      { x: 90,  y: 530, w: 300, h: 30 }, { x: 440, y: 530, w: 250, h: 30 }, { x: 740, y: 530, w: 390, h: 30 },
+      // divisórias verticais superiores (com portas = aberturas)
+      { x: 450, y: 90,  w: 20, h: 120 }, { x: 810, y: 90,  w: 20, h: 120 },
+      // divisórias verticais inferiores
+      { x: 450, y: 620, w: 20, h: 240 }, { x: 810, y: 620, w: 20, h: 240 }
     ]
   },
   {
-    name: 'Labirinto',
-    floor: '#2e2a3a',
+    name: 'Sobrado do Zé',
+    floor: '#33383a',
+    rooms: [
+      { x: 90,  y: 90,  w: 420, h: 300, label: '🍳 Cozinha',   color: '#3f4535' },
+      { x: 540, y: 90,  w: 260, h: 300, label: '🚿 Banheiro',  color: '#35434a' },
+      { x: 830, y: 90,  w: 300, h: 300, label: '🛏️ Quarto',    color: '#453540' },
+      { x: 90,  y: 600, w: 500, h: 280, label: '🛋️ Sala',      color: '#4a3f30' },
+      { x: 640, y: 600, w: 490, h: 280, label: '🌳 Quintal',    color: '#2e4a32' }
+    ],
     walls: [
-      { x: 250, y: 150, w: 40, h: 500 },
-      { x: 500, y: 400, w: 40, h: 600 },
-      { x: 750, y: 150, w: 40, h: 500 },
-      { x: 1000, y: 400, w: 40, h: 600 },
-      { x: 1250, y: 150, w: 40, h: 500 },
-      { x: 250, y: 150, w: 300, h: 40 },
-      { x: 750, y: 610, w: 300, h: 40 }
+      // corredor lateral vertical (esquerda) separando cômodos
+      { x: 510, y: 90,  w: 30, h: 180 }, { x: 800, y: 90,  w: 30, h: 300 },
+      // parede central horizontal (corredor central)
+      { x: 90,  y: 420, w: 350, h: 30 }, { x: 540, y: 420, w: 220, h: 30 }, { x: 860, y: 420, w: 270, h: 30 },
+      { x: 90,  y: 570, w: 350, h: 30 }, { x: 610, y: 570, w: 520, h: 30 },
+      // divisória inferior
+      { x: 590, y: 600, w: 30, h: 280 }
     ]
   },
   {
-    name: 'Arena Aberta',
-    floor: '#2a3a2e',
+    name: 'Kitnet Apertada',
+    floor: '#2e3338',
+    rooms: [
+      { x: 90,  y: 90,  w: 500, h: 340, label: '🛋️ Sala/Quarto', color: '#453f38' },
+      { x: 650, y: 90,  w: 480, h: 200, label: '🍳 Cozinha',      color: '#3f4535' },
+      { x: 650, y: 350, w: 220, h: 250, label: '🚿 Banheiro',     color: '#35434a' },
+      { x: 90,  y: 620, w: 340, h: 240, label: '🧺 Lavanderia',   color: '#35454a' },
+      { x: 490, y: 620, w: 640, h: 240, label: '🌳 Quintal',       color: '#2e4a32' }
+    ],
     walls: [
-      { x: 400, y: 400, w: 160, h: 160 },
-      { x: 1040, y: 400, w: 160, h: 160 },
-      { x: 400, y: 700, w: 160, h: 160 },
-      { x: 1040, y: 700, w: 160, h: 160 },
-      { x: 720, y: 540, w: 160, h: 160 }
-    ]
-  },
-  {
-    name: 'Corredores',
-    floor: '#3a2e2a',
-    walls: [
-      { x: 200, y: 300, w: 500, h: 40 },
-      { x: 900, y: 300, w: 500, h: 40 },
-      { x: 200, y: 600, w: 500, h: 40 },
-      { x: 900, y: 600, w: 500, h: 40 },
-      { x: 200, y: 900, w: 500, h: 40 },
-      { x: 900, y: 900, w: 500, h: 40 },
-      { x: 780, y: 150, w: 40, h: 900 }
+      { x: 590, y: 90,  w: 30, h: 250 }, // parede sala/cozinha (porta embaixo)
+      { x: 650, y: 300, w: 220, h: 30 }, // cozinha/banheiro
+      { x: 870, y: 350, w: 30, h: 180 }, // lateral banheiro
+      { x: 90,  y: 590, w: 200, h: 30 }, { x: 360, y: 590, w: 100, h: 30 }, // corredor
+      { x: 490, y: 590, w: 300, h: 30 }, { x: 860, y: 590, w: 270, h: 30 },
+      { x: 460, y: 620, w: 30, h: 240 } // lavanderia/quintal
     ]
   }
 ];
@@ -303,11 +315,13 @@ setInterval(() => {
     for (let s = 0; s < steps && !done; s++) {
       b.x += sx; b.y += sy; b.dist += Math.hypot(sx, sy);
 
-      if (hitsWall(b.x, b.y, 3)) { events.push({ kind: 'spark', x: b.x, y: b.y }); done = true; break; }
+      // ondas sonoras atravessam paredes; projéteis normais colidem
+      if (!b.wave && hitsWall(b.x, b.y, 3)) { events.push({ kind: 'spark', x: b.x, y: b.y }); done = true; break; }
 
+      const hitR = b.wave ? 34 : 20; // onda acerta num raio maior
       for (const pl of players.values()) {
         if (pl.id === b.owner || !pl.alive) continue;
-        if (Math.hypot(pl.x - b.x, pl.y - b.y) < 20) {
+        if (Math.hypot(pl.x - b.x, pl.y - b.y) < hitR) {
           applyDamage(pl, players.get(b.owner), b.damage);
           done = true; break;
         }
@@ -327,7 +341,7 @@ setInterval(() => {
       weapon: p.weapon, kills: p.kills, deaths: p.deaths, points: p.points,
       level: p.level, owned: p.owned, color: p.color
     })),
-    bullets: bullets.map(b => ({ x: Math.round(b.x), y: Math.round(b.y), a: +Math.atan2(b.vy, b.vx).toFixed(2), w: b.wpn })),
+    bullets: bullets.map(b => ({ x: Math.round(b.x), y: Math.round(b.y), a: +Math.atan2(b.vy, b.vx).toFixed(2), w: b.wpn, wave: b.wave ? 1 : 0 })),
     events,
     chat: chatLog
   };
