@@ -25,13 +25,15 @@ const WORLD = { w: 1600, h: 1200 };
 const MAX_HP = 100;
 const RESPAWN_MS = 3000;
 const KILL_REWARD = 50;   // pontos ganhos por kill
+const DEATH_REWARD = 15;  // pontos de consolação ao morrer
 
-// Armas: pistol é grátis (inicial). Rifle, shotgun e sniper são compráveis.
+// Arsenal DeadZone: Alpes Edition — cada arma tem dano e comportamento próprios.
 const WEAPONS = {
-  pistol:  { name: 'Pistola', cost: 0,   damage: 20, cooldown: 350, speed: 9,  range: 700, pellets: 1 },
-  rifle:   { name: 'Rifle',   cost: 150, damage: 12, cooldown: 120, speed: 12, range: 900, pellets: 1 },
-  shotgun: { name: 'Shotgun', cost: 300, damage: 10, cooldown: 700, speed: 10, range: 420, pellets: 6, spread: 0.35 },
-  sniper:  { name: 'Sniper',  cost: 500, damage: 75, cooldown: 1100, speed: 20, range: 1400, pellets: 1 }
+  chinelo: { name: 'Chinelo',       emoji: '🩴', cost: 0,   damage: 22, cooldown: 260, speed: 17, range: 720, pellets: 1, tint: '#ff5fa2' },
+  grito:   { name: 'Grito do Vado', emoji: '📢', cost: 0,   damage: 7,  cooldown: 520, speed: 26, range: 1500, pellets: 1, tint: '#7fe0ff', wave: true },
+  escova:  { name: 'Escova',        emoji: '🪥', cost: 120, damage: 9,  cooldown: 90,  speed: 20, range: 640, pellets: 1, tint: '#ff3b52' },
+  coco:    { name: 'Cocô',          emoji: '💩', cost: 280, damage: 16, cooldown: 620, speed: 12, range: 460, pellets: 5, spread: 0.4, tint: '#8a5a2b' },
+  espada:  { name: 'Espada',        emoji: '⚔️', cost: 480, damage: 60, cooldown: 900, speed: 24, range: 1300, pellets: 1, tint: '#ffd23b' }
 };
 
 // ==================== MAPAS ====================
@@ -122,15 +124,25 @@ function makePlayer(id, name) {
   return {
     id, name: name || ('P' + id),
     x: p.x, y: p.y, angle: 0,
-    hp: MAX_HP, alive: true,
-    weapon: 'pistol',
-    owned: { pistol: true },     // armas que o jogador possui
+    hp: MAX_HP, maxHp: MAX_HP, alive: true,
+    weapon: 'chinelo',
+    owned: { chinelo: true, grito: true },  // ambas grátis desde o início
     points: 0,                   // moeda pra comprar
+    level: 1,                    // nível (informado pelo cliente, vem do localStorage)
     kills: 0, deaths: 0,
     lastShot: 0,
     lastSeen: Date.now(),        // heartbeat
     input: { up: false, down: false, left: false, right: false },
     color: `hsl(${Math.floor(Math.random() * 360)}, 70%, 55%)`
+  };
+}
+
+// Buff por nível: cada nível dá um pouco mais de vida e dano.
+function levelBuff(level) {
+  const l = Math.max(1, level | 0);
+  return {
+    hp: MAX_HP + (l - 1) * 8,          // +8 HP por nível
+    dmgMult: 1 + (l - 1) * 0.04        // +4% de dano por nível
   };
 }
 
@@ -152,6 +164,13 @@ wss.on('connection', (ws) => {
     switch (msg.type) {
       case 'setName':
         pl.name = String(msg.name || '').slice(0, 12) || pl.name;
+        if (typeof msg.level === 'number') {
+          pl.level = Math.max(1, Math.min(999, msg.level | 0));
+          const buff = levelBuff(pl.level);
+          pl.maxHp = buff.hp;
+          if (pl.hp > pl.maxHp) pl.hp = pl.maxHp;
+          else if (pl.hp === MAX_HP) pl.hp = pl.maxHp; // ainda cheio, sobe pro novo máximo
+        }
         break;
       case 'input':
         if (pl.alive) { pl.input = msg.input; pl.angle = msg.angle; }
@@ -203,14 +222,15 @@ function tryAttack(pl) {
   pl.lastShot = now;
 
   const pellets = w.pellets || 1;
+  const dmg = Math.round(w.damage * levelBuff(pl.level).dmgMult);
   for (let i = 0; i < pellets; i++) {
     let a = pl.angle;
     if (w.spread) a += (Math.random() - 0.5) * w.spread * 2;
     bullets.push({
-      id: nextBulletId++, owner: pl.id,
+      id: nextBulletId++, owner: pl.id, wpn: pl.weapon, wave: !!w.wave,
       x: pl.x, y: pl.y,
       vx: Math.cos(a) * w.speed, vy: Math.sin(a) * w.speed,
-      damage: w.damage, dist: 0, range: w.range
+      damage: dmg, dist: 0, range: w.range
     });
   }
   events.push({ kind: 'muzzle', x: pl.x, y: pl.y, angle: pl.angle });
@@ -223,9 +243,11 @@ function applyDamage(target, attacker, dmg) {
   if (target.hp <= 0) {
     target.alive = false;
     target.deaths++;
+    target.points += DEATH_REWARD;  // consolação: morrer também dá pontos
     if (attacker && attacker.id !== target.id) {
       attacker.kills++;
-      attacker.points += KILL_REWARD;   // recompensa por kill
+      attacker.points += KILL_REWARD;
+      events.push({ kind: 'kill', killer: attacker.id, x: attacker.x, y: attacker.y });
     }
     events.push({ kind: 'death', x: target.x, y: target.y, color: target.color });
     setTimeout(() => respawn(target), RESPAWN_MS);
@@ -235,7 +257,7 @@ function applyDamage(target, attacker, dmg) {
 function respawn(pl) {
   const sp = spawnPoint();
   pl.x = sp.x; pl.y = sp.y;
-  pl.hp = MAX_HP; pl.alive = true;
+  pl.hp = pl.maxHp || MAX_HP; pl.alive = true;
 }
 
 // ==================== HEARTBEAT ====================
@@ -270,20 +292,25 @@ setInterval(() => {
     if (!hitsWall(pl.x, ty, 18)) pl.y = ty;
   }
 
-  // Projéteis (colidem com jogador OU parede)
+  // Projéteis (colidem com jogador OU parede) — sub-passos p/ velocidade alta
   for (let i = bullets.length - 1; i >= 0; i--) {
     const b = bullets[i];
-    b.x += b.vx; b.y += b.vy;
-    b.dist += Math.hypot(b.vx, b.vy);
     let done = false;
+    const speed = Math.hypot(b.vx, b.vy);
+    const steps = Math.max(1, Math.ceil(speed / 8)); // avança em fatias de ~8px
+    const sx = b.vx / steps, sy = b.vy / steps;
 
-    if (hitsWall(b.x, b.y, 3)) { events.push({ kind: 'spark', x: b.x, y: b.y }); done = true; }
+    for (let s = 0; s < steps && !done; s++) {
+      b.x += sx; b.y += sy; b.dist += Math.hypot(sx, sy);
 
-    if (!done) for (const pl of players.values()) {
-      if (pl.id === b.owner || !pl.alive) continue;
-      if (Math.hypot(pl.x - b.x, pl.y - b.y) < 20) {
-        applyDamage(pl, players.get(b.owner), b.damage);
-        done = true; break;
+      if (hitsWall(b.x, b.y, 3)) { events.push({ kind: 'spark', x: b.x, y: b.y }); done = true; break; }
+
+      for (const pl of players.values()) {
+        if (pl.id === b.owner || !pl.alive) continue;
+        if (Math.hypot(pl.x - b.x, pl.y - b.y) < 20) {
+          applyDamage(pl, players.get(b.owner), b.damage);
+          done = true; break;
+        }
       }
     }
     if (done || b.dist > b.range || b.x < 0 || b.y < 0 || b.x > WORLD.w || b.y > WORLD.h) {
@@ -296,11 +323,11 @@ setInterval(() => {
     type: 'state',
     players: [...players.values()].map(p => ({
       id: p.id, name: p.name, x: Math.round(p.x), y: Math.round(p.y),
-      angle: +p.angle.toFixed(2), hp: p.hp, alive: p.alive,
+      angle: +p.angle.toFixed(2), hp: p.hp, maxHp: p.maxHp, alive: p.alive,
       weapon: p.weapon, kills: p.kills, deaths: p.deaths, points: p.points,
-      owned: p.owned, color: p.color
+      level: p.level, owned: p.owned, color: p.color
     })),
-    bullets: bullets.map(b => ({ x: Math.round(b.x), y: Math.round(b.y) })),
+    bullets: bullets.map(b => ({ x: Math.round(b.x), y: Math.round(b.y), a: +Math.atan2(b.vy, b.vx).toFixed(2), w: b.wpn })),
     events,
     chat: chatLog
   };
