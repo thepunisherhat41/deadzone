@@ -33,15 +33,37 @@ const VOTE_MS = 30 * 1000;      // 30s de votação
 let phase = 'playing';          // 'playing' | 'voting'
 let phaseEndsAt = Date.now() + ROUND_MS;
 let votes = {};                 // voterId -> targetId (ou 'skip')
-let bannedThisRound = null;     // id do ejetado na última votação
+let bannedThisRound = null;     // dados do ejetado na última votação
+let roundNumber = 1;              // rodada atual; usado para suspensão de 1 rodada
 
 // Arsenal DeadZone: Alpes Edition — cada arma tem dano e comportamento próprios.
 const WEAPONS = {
-  chinelo: { name: 'Chinelo',       emoji: '🩴', cost: 0,   damage: 22, cooldown: 260, speed: 17, range: 720, pellets: 1, tint: '#ff5fa2' },
-  grito:   { name: 'Grito do Vado', emoji: '📢', cost: 0,   damage: 7,  cooldown: 520, speed: 26, range: 1500, pellets: 1, tint: '#7fe0ff', wave: true },
-  escova:  { name: 'Escova',        emoji: '🪥', cost: 120, damage: 9,  cooldown: 90,  speed: 20, range: 640, pellets: 1, tint: '#ff3b52' },
-  coco:    { name: 'Cocô',          emoji: '💩', cost: 280, damage: 16, cooldown: 620, speed: 12, range: 460, pellets: 5, spread: 0.4, tint: '#8a5a2b' },
-  espada:  { name: 'Espada',        emoji: '⚔️', cost: 480, damage: 60, cooldown: 900, speed: 24, range: 1300, pellets: 1, tint: '#ffd23b' }
+  chinelo: {
+    name: 'Chinelo', emoji: '🩴', icon: 'chinelo', cost: 0,
+    damage: 24, cooldown: 320, speed: 15, range: 520, pellets: 1, hitRadius: 19,
+    tint: '#ff5fa2', description: 'Arremesso médio, simples e confiável.'
+  },
+  grito: {
+    name: 'Grito do Vado', emoji: '📣', icon: 'grito', cost: 0,
+    damage: 8, cooldown: 820, speed: 22, range: 1050, pellets: 1, hitRadius: 42,
+    tint: '#7fe0ff', wave: true, pierce: true,
+    description: 'Onda sonora de longo alcance. Atravessa paredes e jogadores.'
+  },
+  escova: {
+    name: 'Escova de Cabelo', emoji: '', icon: 'hairbrush', cost: 120,
+    damage: 18, cooldown: 330, speed: 19, range: 610, pellets: 1, hitRadius: 22,
+    tint: '#ff4fa3', description: 'Escova rosa arremessada. Alcance médio e boa cadência.'
+  },
+  coco: {
+    name: 'Cocô', emoji: '💩', icon: 'coco', cost: 280,
+    damage: 14, cooldown: 650, speed: 11, range: 380, pellets: 5, spread: 0.42, hitRadius: 20,
+    tint: '#8a5a2b', description: 'Rajada curta de cinco projéteis. Forte de perto.'
+  },
+  espada: {
+    name: 'Espada-de-São-Jorge', emoji: '🌿', icon: 'snakeplant', cost: 480,
+    damage: 48, cooldown: 780, speed: 23, range: 760, pellets: 1, hitRadius: 20,
+    tint: '#77c44a', description: 'Folha pontuda lançada em linha reta. Alto dano.'
+  }
 };
 
 // ==================== MAPAS: CASAS BRASILEIRAS ====================
@@ -153,7 +175,8 @@ function makePlayer(id, name) {
     points: 0,                   // moeda pra comprar
     level: 1,                    // nível (informado pelo cliente, vem do localStorage)
     kills: 0, deaths: 0,
-    banned: false,               // ejetado nesta tela (volta na próxima)
+    banned: false,               // compatibilidade de UI: true enquanto estiver espectador
+    spectatorUntilRound: 0,       // número da última rodada em que deve ficar fora
     lastShot: 0,
     lastSeen: Date.now(),        // heartbeat
     input: { up: false, down: false, left: false, right: false },
@@ -168,6 +191,14 @@ function levelBuff(level) {
     hp: MAX_HP + (l - 1) * 8,          // +8 HP por nível
     dmgMult: 1 + (l - 1) * 0.04        // +4% de dano por nível
   };
+}
+
+function isSpectating(pl) {
+  return !!pl && pl.spectatorUntilRound >= roundNumber;
+}
+
+function resetInput(pl) {
+  pl.input = { up: false, down: false, left: false, right: false };
 }
 
 wss.on('connection', (ws) => {
@@ -197,7 +228,11 @@ wss.on('connection', (ws) => {
         }
         break;
       case 'input':
-        if (pl.alive) { pl.input = msg.input; pl.angle = msg.angle; }
+        if (pl.alive && !isSpectating(pl) && phase === 'playing') {
+          const i = msg.input || {};
+          pl.input = { up: !!i.up, down: !!i.down, left: !!i.left, right: !!i.right };
+          if (Number.isFinite(msg.angle)) pl.angle = Math.atan2(Math.sin(msg.angle), Math.cos(msg.angle));
+        }
         break;
       case 'switchWeapon':
         if (WEAPONS[msg.weapon] && pl.owned[msg.weapon]) pl.weapon = msg.weapon;
@@ -206,7 +241,7 @@ wss.on('connection', (ws) => {
         buyWeapon(pl, msg.weapon, ws);
         break;
       case 'attack':
-        if (pl.alive && phase === 'playing') tryAttack(pl);
+        if (pl.alive && !isSpectating(pl) && phase === 'playing') tryAttack(pl);
         break;
       case 'vote':
         handleVote(pl, msg.target);
@@ -244,6 +279,7 @@ function handleChat(pl, text) {
 
 function tryAttack(pl) {
   const w = WEAPONS[pl.weapon];
+  if (!w) return;
   const now = Date.now();
   if (now - pl.lastShot < w.cooldown) return;
   pl.lastShot = now;
@@ -253,14 +289,17 @@ function tryAttack(pl) {
   for (let i = 0; i < pellets; i++) {
     let a = pl.angle;
     if (w.spread) a += (Math.random() - 0.5) * w.spread * 2;
+    const spawnOffset = w.wave ? 30 : 26;
     bullets.push({
-      id: nextBulletId++, owner: pl.id, wpn: pl.weapon, wave: !!w.wave,
-      x: pl.x, y: pl.y,
+      id: nextBulletId++, owner: pl.id, wpn: pl.weapon, wave: !!w.wave, pierce: !!w.pierce,
+      x: pl.x + Math.cos(a) * spawnOffset,
+      y: pl.y + Math.sin(a) * spawnOffset,
       vx: Math.cos(a) * w.speed, vy: Math.sin(a) * w.speed,
-      damage: dmg, dist: 0, range: w.range
+      damage: dmg, dist: 0, range: w.range, hitRadius: w.hitRadius || 20,
+      hitIds: new Set()
     });
   }
-  events.push({ kind: 'muzzle', x: pl.x, y: pl.y, angle: pl.angle });
+  events.push({ kind: 'muzzle', x: pl.x, y: pl.y, angle: pl.angle, shooter: pl.id, weapon: pl.weapon });
 }
 
 function applyDamage(target, attacker, dmg) {
@@ -282,7 +321,7 @@ function applyDamage(target, attacker, dmg) {
 }
 
 function respawn(pl) {
-  if (pl.banned) return; // banido não renasce nesta tela
+  if (isSpectating(pl)) return; // ejetado fica espectador durante a rodada de suspensão
   const sp = spawnPoint();
   pl.x = sp.x; pl.y = sp.y;
   pl.hp = pl.maxHp || MAX_HP; pl.alive = true;
@@ -292,8 +331,10 @@ function respawn(pl) {
 function startVoting() {
   phase = 'voting';
   votes = {};
+  bullets.length = 0; // nenhum projétil continua causando dano durante a reunião
+  for (const pl of players.values()) resetInput(pl);
   phaseEndsAt = Date.now() + VOTE_MS;
-  chatLog.push({ name: 'sistema', color: '#ffd23b', text: '🗳️ REUNIÃO! Votem em quem sai desta tela.' });
+  chatLog.push({ name: 'sistema', color: '#ffd23b', text: '🗳️ REUNIÃO! Votem em quem fica fora da próxima rodada.' });
 }
 
 function tallyVotesAndBan() {
@@ -313,9 +354,13 @@ function tallyVotesAndBan() {
   if (top && topN > 0 && !tie) {
     const pl = players.get(+top);
     if (pl) {
-      pl.banned = true; pl.alive = false;
-      bannedThisRound = { id: pl.id, name: pl.name };
-      chatLog.push({ name: 'sistema', color: '#ff3b52', text: `🚪 ${pl.name} foi banido desta tela!` });
+      pl.spectatorUntilRound = roundNumber + 1; // fica fora da próxima rodada inteira
+      pl.banned = true;
+      pl.alive = false;
+      pl.hp = 0;
+      resetInput(pl);
+      bannedThisRound = { id: pl.id, name: pl.name, spectatorRound: roundNumber + 1 };
+      chatLog.push({ name: 'sistema', color: '#ff3b52', text: `🚪 ${pl.name} foi ejetado e ficará 1 rodada como espectador.` });
     }
   } else {
     chatLog.push({ name: 'sistema', color: '#9fc4e8', text: 'Ninguém foi banido (empate ou sem votos).' });
@@ -323,23 +368,31 @@ function tallyVotesAndBan() {
 }
 
 function nextRound() {
-  // sorteia novo mapa, restaura banidos, reseta placar da tela
+  // nova tela. O jogador ejetado permanece espectador durante esta rodada inteira.
+  roundNumber++;
   currentMapIndex = Math.floor(Math.random() * MAPS.length);
   phase = 'playing';
   phaseEndsAt = Date.now() + ROUND_MS;
   votes = {};
+  bullets.length = 0;
   for (const pl of players.values()) {
-    pl.banned = false; // todos voltam na nova tela
+    resetInput(pl);
+    const spectating = isSpectating(pl);
+    pl.banned = spectating;
+    if (spectating) {
+      pl.alive = false;
+      pl.hp = 0;
+      continue;
+    }
     const sp = spawnPoint();
     pl.x = sp.x; pl.y = sp.y;
     pl.hp = pl.maxHp || MAX_HP; pl.alive = true;
   }
-  // avisa o novo mapa a todos
   const initMap = currentMap();
   for (const client of wss.clients) {
-    if (client.readyState === 1) client.send(JSON.stringify({ type: 'newMap', map: initMap, name: initMap.name }));
+    if (client.readyState === 1) client.send(JSON.stringify({ type: 'newMap', map: initMap, name: initMap.name, round: roundNumber }));
   }
-  chatLog.push({ name: 'sistema', color: '#4ade5f', text: `🏠 Nova tela: ${initMap.name}` });
+  chatLog.push({ name: 'sistema', color: '#4ade5f', text: `🏠 Rodada ${roundNumber}: ${initMap.name}` });
 }
 
 // gerência de tempo das fases:
@@ -362,8 +415,14 @@ setInterval(() => {
 
 function handleVote(voter, targetId) {
   if (phase !== 'voting') return;
-  if (voter.banned) return; // banido não vota
-  votes[voter.id] = targetId; // 'skip' ou id
+  if (isSpectating(voter)) return; // espectador não vota
+  if (targetId === 'skip') {
+    votes[voter.id] = 'skip';
+    return;
+  }
+  const target = players.get(Number(targetId));
+  if (!target || target.id === voter.id || isSpectating(target)) return;
+  votes[voter.id] = target.id;
 }
 
 // ==================== HEARTBEAT ====================
@@ -382,9 +441,10 @@ setInterval(() => {
 const STEP = 9.6; // deslocamento por tick
 setInterval(() => {
   const moving = (phase === 'playing');
+  if (!moving && bullets.length) bullets.length = 0;
   // Movimento com colisão (testa eixos separadamente pra deslizar na parede)
   for (const pl of players.values()) {
-    if (!pl.alive || !moving) continue;
+    if (!pl.alive || isSpectating(pl) || !moving) continue;
     let dx = 0, dy = 0;
     if (pl.input.up) dy -= 1;
     if (pl.input.down) dy += 1;
@@ -413,12 +473,13 @@ setInterval(() => {
       // ondas sonoras atravessam paredes; projéteis normais colidem
       if (!b.wave && hitsWall(b.x, b.y, 3)) { events.push({ kind: 'spark', x: b.x, y: b.y }); done = true; break; }
 
-      const hitR = b.wave ? 34 : 20; // onda acerta num raio maior
+      const hitR = b.hitRadius || (b.wave ? 42 : 20);
       for (const pl of players.values()) {
-        if (pl.id === b.owner || !pl.alive) continue;
+        if (pl.id === b.owner || !pl.alive || isSpectating(pl) || b.hitIds.has(pl.id)) continue;
         if (Math.hypot(pl.x - b.x, pl.y - b.y) < hitR) {
           applyDamage(pl, players.get(b.owner), b.damage);
-          done = true; break;
+          b.hitIds.add(pl.id);
+          if (!b.pierce) { done = true; break; }
         }
       }
     }
@@ -434,14 +495,16 @@ setInterval(() => {
       id: p.id, name: p.name, x: Math.round(p.x), y: Math.round(p.y),
       angle: +p.angle.toFixed(2), hp: p.hp, maxHp: p.maxHp, alive: p.alive,
       weapon: p.weapon, kills: p.kills, deaths: p.deaths, points: p.points,
-      level: p.level, owned: p.owned, color: p.color, banned: p.banned
+      level: p.level, owned: p.owned, color: p.color, banned: p.banned, spectating: isSpectating(p)
     })),
-    bullets: bullets.map(b => ({ x: Math.round(b.x), y: Math.round(b.y), a: +Math.atan2(b.vy, b.vx).toFixed(2), w: b.wpn, wave: b.wave ? 1 : 0 })),
+    bullets: bullets.map(b => ({ x: Math.round(b.x), y: Math.round(b.y), a: +Math.atan2(b.vy, b.vx).toFixed(2), w: b.wpn, wave: b.wave ? 1 : 0, progress: Math.max(0, Math.min(1, b.dist / b.range)) })),
     events,
     chat: chatLog,
     phase,
     timeLeft: Math.max(0, Math.round((phaseEndsAt - Date.now()) / 1000)),
-    votes: phase === 'voting' ? votes : null
+    votes: phase === 'voting' ? votes : null,
+    ejected: phase === 'result' ? bannedThisRound : null,
+    round: roundNumber
   };
   const payload = JSON.stringify(state);
   for (const client of wss.clients) {
