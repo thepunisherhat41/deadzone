@@ -220,6 +220,7 @@ function noise(dur, vol) {
 }
 const sound = {
   chinelo: () => { tone(420, 0.09, 'triangle', 0.14, 180); }, // "vupt" do chinelo girando
+  grito:   () => { tone(180, 0.3, 'sawtooth', 0.2, 90); noise(0.15, 0.08); }, // grito grave "VAAADO"
   escova:  () => tone(300, 0.04, 'square', 0.08, 220),        // metralha rápida
   coco:    () => { noise(0.2, 0.22); tone(90, 0.18, 'sawtooth', 0.12, 50); }, // splat
   espada:  () => { tone(800, 0.14, 'sawtooth', 0.18, 200); tone(1200,0.08,'sine',0.1); }, // corte metálico
@@ -462,7 +463,8 @@ function drawBean(sx, sy, p, isMe) {
   ctx.strokeStyle = shade(p.color, -50); ctx.lineWidth = 2; roundRect(-3 + ex, -14 + ey, 16, 11, 5); ctx.stroke();
   ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.beginPath(); ctx.arc(2 + ex, -11 + ey, 2, 0, Math.PI * 2); ctx.fill();
   ctx.save(); ctx.rotate(p.angle);
-  if (p.weapon === 'espada') { ctx.fillStyle = '#ffd23b'; ctx.fillRect(12, -2, 22, 4); ctx.fillStyle='#8a6a20'; ctx.fillRect(10,-3,4,6); }
+  if (p.weapon === 'grito') { ctx.fillStyle = '#7fe0ff'; ctx.beginPath(); ctx.moveTo(12,-2); ctx.lineTo(26,-7); ctx.lineTo(26,7); ctx.lineTo(12,2); ctx.closePath(); ctx.fill(); ctx.strokeStyle='#2a8ab0'; ctx.lineWidth=1.5; ctx.stroke(); }
+  else if (p.weapon === 'espada') { ctx.fillStyle = '#ffd23b'; ctx.fillRect(12, -2, 22, 4); ctx.fillStyle='#8a6a20'; ctx.fillRect(10,-3,4,6); }
   else if (p.weapon === 'coco') { ctx.fillStyle = '#6b4423'; ctx.beginPath(); ctx.arc(20,0,5,0,Math.PI*2); ctx.fill(); }
   else if (p.weapon === 'escova') { ctx.fillStyle = '#ff3b52'; ctx.fillRect(12,-3,14,6); ctx.fillStyle='#111'; ctx.fillRect(22,-4,5,8); }
   else { ctx.fillStyle = '#ff5fa2'; roundRect(12,-4,16,8,4); ctx.fill(); } // chinelo
@@ -489,7 +491,7 @@ function shade(hsl, amt) {
   return `hsl(${m[1]}, ${m[2]}%, ${l}%)`;
 }
 
-const ZOOM = 0.72; // <1 = câmera mais afastada, enxerga mais da arena
+const ZOOM = 0.58; // <1 = câmera mais afastada; menor = visão mais ampla e movimento mais leve
 function draw() {
   animTime += 1 / 60;
 
@@ -521,19 +523,26 @@ function draw() {
   ctx.fillStyle = '#0a0a10'; ctx.fillRect(0, 0, W, H);
   ctx.setTransform(DPR * ZOOM, 0, 0, DPR * ZOOM, 0, 0);
 
-  // ---- piso texturizado (xadrez sutil + vinheta) ----
+  // ---- piso base ----
   ctx.fillStyle = gameMap.floor; ctx.fillRect(-camX, -camY, world.w, world.h);
-  const tile = 80;
-  for (let gx = 0; gx < world.w; gx += tile) {
-    for (let gy = 0; gy < world.h; gy += tile) {
-      if (((gx / tile) + (gy / tile)) % 2 === 0) {
-        ctx.fillStyle = 'rgba(255,255,255,.025)';
-        ctx.fillRect(gx - camX, gy - camY, tile, tile);
-      }
-    }
+
+  // ---- cômodos da casa (cor + rótulo) ----
+  if (gameMap.rooms) for (const rm of gameMap.rooms) {
+    ctx.fillStyle = rm.color;
+    ctx.fillRect(rm.x - camX, rm.y - camY, rm.w, rm.h);
+    // piso em ladrilho sutil
+    ctx.strokeStyle = 'rgba(0,0,0,.08)'; ctx.lineWidth = 1;
+    for (let lx = rm.x; lx < rm.x + rm.w; lx += 40) { ctx.beginPath(); ctx.moveTo(lx - camX, rm.y - camY); ctx.lineTo(lx - camX, rm.y + rm.h - camY); ctx.stroke(); }
+    for (let ly = rm.y; ly < rm.y + rm.h; ly += 40) { ctx.beginPath(); ctx.moveTo(rm.x - camX, ly - camY); ctx.lineTo(rm.x + rm.w - camX, ly - camY); ctx.stroke(); }
+    // rótulo do cômodo
+    ctx.fillStyle = 'rgba(255,255,255,.32)';
+    ctx.font = 'bold 26px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(rm.label, rm.x + rm.w / 2 - camX, rm.y + 34 - camY);
   }
-  // linhas de grade neon suaves
-  ctx.strokeStyle = 'rgba(120,180,255,.05)'; ctx.lineWidth = 1;
+
+  const tile = 80;
+  // linhas de grade neon suaves (leve, por cima de tudo)
+  ctx.strokeStyle = 'rgba(120,180,255,.04)'; ctx.lineWidth = 1;
   for (let x = 0; x <= world.w; x += tile) { ctx.beginPath(); ctx.moveTo(x - camX, -camY); ctx.lineTo(x - camX, world.h - camY); ctx.stroke(); }
   for (let y = 0; y <= world.h; y += tile) { ctx.beginPath(); ctx.moveTo(-camX, y - camY); ctx.lineTo(world.w - camX, y - camY); ctx.stroke(); }
 
@@ -597,7 +606,21 @@ function draw() {
   for (const b of state.bullets) {
     const bx = b.x - camX, by = b.y - camY, a = b.a || 0, wpn = b.w || 'chinelo';
     ctx.save(); ctx.translate(bx, by); ctx.rotate(a);
-    if (wpn === 'espada') {
+    if (b.wave) {
+      // onda sonora: arcos concêntricos pulsando na direção do tiro
+      ctx.rotate(-a); // arcos são radiais, não giram com a direção
+      const pulse = (animTime * 6) % 1;
+      for (let k = 0; k < 3; k++) {
+        const rr = 10 + k * 9 + pulse * 9;
+        ctx.strokeStyle = `rgba(127,224,255,${0.7 - k * 0.2})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, 0, rr, a - 0.9, a + 0.9); // leque na direção do disparo
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(127,224,255,.9)';
+      ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill();
+    } else if (wpn === 'espada') {
       // risco dourado longo e afiado
       const grad = ctx.createLinearGradient(-30, 0, 12, 0);
       grad.addColorStop(0, 'rgba(255,210,59,0)'); grad.addColorStop(1, 'rgba(255,240,150,.95)');
