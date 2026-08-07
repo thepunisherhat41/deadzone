@@ -38,8 +38,24 @@
   #stickKnob { position: absolute; width: 58px; height: 58px; left: 36px; top: 36px; border-radius: 50%; background: rgba(255,59,82,.55); border: 2px solid rgba(255,255,255,.4); }
 
   #actions { position: fixed; bottom: 34px; right: 34px; z-index: 10; display: flex; flex-direction: column; gap: 12px; align-items: center; }
-  #fire { width: 96px; height: 96px; border-radius: 50%; background: rgba(255,59,82,.85); border: 3px solid rgba(255,255,255,.35); color: #fff; font-size: 30px; box-shadow: 0 4px 0 #a01828; }
-  #fire:active { transform: translateY(4px); box-shadow: 0 0 0 #a01828; }
+  /* joystick de mira estilo Free Fire */
+  #aimStick { position: relative; width: 150px; height: 150px; }
+  #aimBase { position: absolute; inset: 0; border-radius: 50%; background: rgba(255,59,82,.15); border: 3px solid rgba(255,59,82,.5); }
+  #aimKnob { position: absolute; width: 74px; height: 74px; left: 38px; top: 38px; border-radius: 50%; background: rgba(255,59,82,.9); border: 3px solid rgba(255,255,255,.5); box-shadow: 0 3px 0 #a01828; display: flex; align-items: center; justify-content: center; font-size: 30px; }
+  #aimHint { position: fixed; bottom: 194px; right: 34px; width: 150px; text-align: center; color: rgba(255,255,255,.5); font-size: 11px; z-index: 10; pointer-events: none; }
+  /* tela de votação */
+  #vote { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; background: rgba(8,10,20,.92); z-index: 40; gap: 10px; padding: 20px; }
+  #vote h2 { color: #ffd23b; font-size: 28px; letter-spacing: 2px; text-shadow: 2px 2px 0 #000; }
+  #voteTimer { color: #ff3b52; font-size: 40px; font-weight: 900; }
+  #voteList { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 380px; margin-top: 6px; }
+  .voteRow { display: flex; align-items: center; justify-content: space-between; background: #1a1a26; border: 2px solid #333; border-radius: 12px; padding: 12px 16px; color: #fff; }
+  .voteRow.voted { border-color: #ff3b52; background: rgba(255,59,82,.15); }
+  .voteRow .who { display: flex; align-items: center; gap: 10px; font-weight: bold; }
+  .voteRow .dot { width: 22px; height: 22px; border-radius: 50%; }
+  .voteRow .cnt { color: #ffd23b; font-weight: 900; }
+  .voteRow button { padding: 8px 16px; border: none; border-radius: 8px; background: #ff3b52; color: #fff; font-weight: bold; }
+  #skipVote { margin-top: 6px; padding: 12px 30px; border: none; border-radius: 12px; background: #444; color: #fff; font-weight: bold; }
+  #voteResult { color: #fff; font-size: 20px; text-align: center; min-height: 24px; }
   #topRight { position: fixed; top: 12px; right: 12px; z-index: 10; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
   .iconbtn { padding: 10px 14px; border-radius: 9px; border: 2px solid #444; background: rgba(0,0,0,.6); color: #fff; font-size: 14px; font-weight: bold; }
   #weapons { position: fixed; bottom: 140px; right: 34px; z-index: 10; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; max-width: 220px; }
@@ -73,6 +89,26 @@
   #dead .big { font-size: 40px; font-weight: 900; color: #ff3b52; text-shadow: 3px 3px 0 #000; }
   #dead small { font-size: 15px; opacity: .85; }
   #dead button { margin-top: 8px; padding: 12px 24px; background: #ffd23b; color: #000; border: none; border-radius: 10px; font-weight: 900; pointer-events: auto; }
+  /* ============ MOBILE: HUD enxuto e controles compactos ============ */
+  @media (max-width: 820px), (pointer: coarse) {
+    #scoreboard, #status { font-size: 11px; padding: 6px 9px; line-height: 1.4; }
+    #status { margin-right: 76px; }
+    #levelBadge { padding: 5px 10px; font-size: 11px; border-radius: 9px; }
+    #levelBadge small { font-size: 8px; }
+    #xpBar { width: 84px; height: 4px; }
+    .iconbtn { padding: 7px 9px; font-size: 12px; }
+    #topRight { gap: 6px; top: 8px; right: 8px; }
+    #stick { width: 108px; height: 108px; bottom: 24px; left: 20px; }
+    #stickKnob { width: 48px; height: 48px; left: 30px; top: 30px; }
+    #aimStick { width: 118px; height: 118px; }
+    #aimKnob { width: 58px; height: 58px; left: 30px; top: 30px; font-size: 24px; }
+    #actions { bottom: 24px; right: 20px; }
+    #aimHint { display: none; }
+    #weapons { bottom: 150px; left: 16px; right: auto; max-width: 60px; flex-direction: column; gap: 5px; align-items: flex-start; }
+    .wbtn { padding: 7px; font-size: 18px; width: 42px; text-align: center; }
+    .wbtn .wname { display: none; }
+    #chatBox { bottom: 150px; left: 70px; width: 180px; }
+  }
 </style>
 </head>
 <body>
@@ -120,7 +156,18 @@
 
 <div id="weapons"></div>
 
-<div id="actions"><button id="fire">🩴</button></div>
+<div id="actions">
+  <div id="aimStick"><div id="aimBase"></div><div id="aimKnob">🩴</div></div>
+</div>
+<div id="aimHint">arraste p/ mirar e atirar</div>
+
+<div id="vote">
+  <h2>🗳️ QUEM SAI DESTA TELA?</h2>
+  <div id="voteTimer">30</div>
+  <div id="voteList"></div>
+  <button id="skipVote">Pular voto</button>
+  <div id="voteResult"></div>
+</div>
 
 <div id="shop">
   <div id="shopBox">
@@ -287,6 +334,10 @@ function connect() {
       }
       if (msg.chat && msg.chat.length) for (const c of msg.chat) addChat(c);
       refreshWeaponBar(); refreshShop();
+      updateVoteUI(); // atualiza tela de votação conforme a fase
+    } else if (msg.type === 'newMap') {
+      gameMap = msg.map;
+      flashMsg('🏠 Nova tela: ' + msg.name);
     } else if (msg.type === 'ping') {
       send({ type: 'pong' });
     } else if (msg.type === 'buyResult') {
@@ -318,12 +369,12 @@ function buildWeaponBar() {
   for (const key in weapons) {
     const btn = document.createElement('button');
     btn.className = 'wbtn'; btn.dataset.w = key;
-    btn.textContent = (weapons[key].emoji || '') + ' ' + weapons[key].name;
+    btn.innerHTML = (weapons[key].emoji || '') + '<span class="wname"> ' + weapons[key].name + '</span>';
     btn.onclick = () => {
       if (!myData || !myData.owned[key]) { openShop(); return; }
       currentWeapon = key;
       send({ type: 'switchWeapon', weapon: key });
-      document.getElementById('fire').textContent = (weapons[key] && weapons[key].emoji) || '🩴';
+      document.getElementById('aimKnob').textContent = (weapons[key] && weapons[key].emoji) || '🩴';
     };
     bar.appendChild(btn);
   }
@@ -371,6 +422,48 @@ document.getElementById('shopBtn').onclick = openShop;
 document.getElementById('shopClose').onclick = closeShop;
 document.getElementById('deadShop').onclick = openShop;
 
+// ---- Votação ----
+let myVote = null;
+function updateVoteUI() {
+  const panel = document.getElementById('vote');
+  if (state.phase === 'voting') {
+    panel.style.display = 'flex';
+    document.getElementById('voteResult').textContent = '';
+    document.getElementById('skipVote').style.display = '';
+    document.getElementById('voteList').style.display = '';
+    document.getElementById('voteTimer').textContent = state.timeLeft != null ? state.timeLeft : '';
+    const tally = {};
+    if (state.votes) for (const v in state.votes) { const t = state.votes[v]; if (t && t !== 'skip') tally[t] = (tally[t]||0)+1; }
+    const list = document.getElementById('voteList');
+    list.innerHTML = '';
+    for (const p of state.players) {
+      if (p.banned) continue;
+      const row = document.createElement('div');
+      row.className = 'voteRow' + (myVote == p.id ? ' voted' : '');
+      row.innerHTML = `<div class="who"><span class="dot" style="background:${p.color}"></span>${escapeHtml(p.name)}${p.id===myId?' (você)':''} <span style="color:#888">${p.kills}💀</span></div><span class="cnt">${tally[p.id]||0}</span>`;
+      if (p.id !== myId) {
+        const btn = document.createElement('button'); btn.textContent = 'Votar';
+        btn.onclick = () => { myVote = p.id; send({ type: 'vote', target: p.id }); sound.hit(); updateVoteUI(); };
+        row.appendChild(btn);
+      }
+      list.appendChild(row);
+    }
+  } else if (state.phase === 'result') {
+    panel.style.display = 'flex';
+    document.getElementById('voteList').style.display = 'none';
+    document.getElementById('skipVote').style.display = 'none';
+    document.getElementById('voteTimer').textContent = '';
+    const banned = state.players.find(p => p.banned);
+    document.getElementById('voteResult').innerHTML = banned
+      ? `🚪 <b style="color:#ff3b52">${escapeHtml(banned.name)}</b> foi banido desta tela!<br><small style="color:#9fc4e8">volta na próxima</small>`
+      : '🤝 Ninguém foi banido';
+  } else {
+    panel.style.display = 'none';
+    myVote = null;
+  }
+}
+document.getElementById('skipVote').onclick = () => { myVote = 'skip'; send({ type: 'vote', target: 'skip' }); };
+
 // ---- Chat ----
 function addChat(c) {
   const box = document.getElementById('chatMsgs');
@@ -394,7 +487,7 @@ function sendChat() {
 document.getElementById('chatSend').onclick = sendChat;
 chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChat(); if (e.key === 'Escape') { chatInput.value=''; chatWrap.style.display='none'; } });
 
-// ---- Joystick ----
+// ---- Joystick de MOVIMENTO (esquerdo) — só anda, não mira ----
 const stick = document.getElementById('stick'), knob = document.getElementById('stickKnob');
 let stickId = null; const maxDist = 48;
 stick.addEventListener('touchstart', (e) => { stickId = e.changedTouches[0].identifier; e.preventDefault(); });
@@ -408,20 +501,36 @@ stick.addEventListener('touchmove', (e) => {
     knob.style.left = (36 + dx) + 'px'; knob.style.top = (36 + dy) + 'px';
     const dead = 12;
     input.left = dx < -dead; input.right = dx > dead; input.up = dy < -dead; input.down = dy > dead;
-    if (d > dead) myAngle = Math.atan2(dy, dx);
+    // se não estiver mirando, o personagem "olha" pra onde anda (fallback)
+    if (d > dead && !aiming) myAngle = Math.atan2(dy, dx);
   }
   e.preventDefault();
 });
 function stickEnd() { stickId = null; knob.style.left = '36px'; knob.style.top = '36px'; input.up = input.down = input.left = input.right = false; }
 stick.addEventListener('touchend', stickEnd); stick.addEventListener('touchcancel', stickEnd);
 
-// ---- Tiro ----
-const fireBtn = document.getElementById('fire');
-let fireInterval = null;
-function startFire(e) { send({ type: 'attack' }); fireInterval = setInterval(() => send({ type: 'attack' }), 100); if (e) e.preventDefault(); }
-function stopFire(e) { clearInterval(fireInterval); if (e) e.preventDefault(); }
-fireBtn.addEventListener('touchstart', startFire); fireBtn.addEventListener('touchend', stopFire);
-fireBtn.addEventListener('mousedown', startFire); fireBtn.addEventListener('mouseup', stopFire);
+// ---- Joystick de MIRA (direito) — estilo Free Fire: arrasta pra mirar, atira sozinho ----
+const aimStick = document.getElementById('aimStick'), aimKnob = document.getElementById('aimKnob');
+let aimId = null, aiming = false, fireInterval = null;
+const aimMax = 55;
+function startAutoFire() { if (fireInterval) return; send({ type: 'attack' }); fireInterval = setInterval(() => send({ type: 'attack' }), 110); }
+function stopAutoFire() { clearInterval(fireInterval); fireInterval = null; }
+aimStick.addEventListener('touchstart', (e) => { aimId = e.changedTouches[0].identifier; aiming = true; e.preventDefault(); });
+aimStick.addEventListener('touchmove', (e) => {
+  for (const t of e.changedTouches) {
+    if (t.identifier !== aimId) continue;
+    const rect = aimStick.getBoundingClientRect();
+    let dx = t.clientX - rect.left - 75, dy = t.clientY - rect.top - 75;
+    const d = Math.hypot(dx, dy);
+    let vx = dx, vy = dy;
+    if (d > aimMax) { vx = dx / d * aimMax; vy = dy / d * aimMax; }
+    aimKnob.style.left = (38 + vx) + 'px'; aimKnob.style.top = (38 + vy) + 'px';
+    if (d > 14) { myAngle = Math.atan2(dy, dx); startAutoFire(); } // mira + dispara
+  }
+  e.preventDefault();
+});
+function aimEnd() { aimId = null; aiming = false; aimKnob.style.left = '38px'; aimKnob.style.top = '38px'; stopAutoFire(); }
+aimStick.addEventListener('touchend', aimEnd); aimStick.addEventListener('touchcancel', aimEnd);
 
 // ---- Desktop ----
 window.addEventListener('keydown', (e) => {
@@ -439,7 +548,9 @@ window.addEventListener('keyup', (e) => {
   if (e.key === 'a' || e.key === 'ArrowLeft') input.left = false;
   if (e.key === 'd' || e.key === 'ArrowRight') input.right = false;
 });
-window.addEventListener('mousemove', (e) => { myAngle = Math.atan2(e.clientY - H / 2, e.clientX - W / 2); });
+window.addEventListener('mousemove', (e) => { if (!aiming) myAngle = Math.atan2(e.clientY - H / 2, e.clientX - W / 2); });
+window.addEventListener('mousedown', (e) => { if (e.target.closest('#vote,#shop,#topRight,#chatInputWrap,#start')) return; startAutoFire(); });
+window.addEventListener('mouseup', () => stopAutoFire());
 
 setInterval(() => { if (myId !== null) send({ type: 'input', input, angle: myAngle }); }, 50);
 
@@ -491,7 +602,7 @@ function shade(hsl, amt) {
   return `hsl(${m[1]}, ${m[2]}%, ${l}%)`;
 }
 
-const ZOOM = 0.58; // <1 = câmera mais afastada; menor = visão mais ampla e movimento mais leve
+const ZOOM = 0.72; // câmera equilibrada: vê o cômodo ao redor sem afastar demais
 function draw() {
   animTime += 1 / 60;
 
@@ -607,19 +718,22 @@ function draw() {
     const bx = b.x - camX, by = b.y - camY, a = b.a || 0, wpn = b.w || 'chinelo';
     ctx.save(); ctx.translate(bx, by); ctx.rotate(a);
     if (b.wave) {
-      // onda sonora: arcos concêntricos pulsando na direção do tiro
-      ctx.rotate(-a); // arcos são radiais, não giram com a direção
-      const pulse = (animTime * 6) % 1;
-      for (let k = 0; k < 3; k++) {
-        const rr = 10 + k * 9 + pulse * 9;
-        ctx.strokeStyle = `rgba(127,224,255,${0.7 - k * 0.2})`;
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.arc(0, 0, rr, a - 0.9, a + 0.9); // leque na direção do disparo
-        ctx.stroke();
+      // GRITO DO VADO: ondas sonoras concêntricas expandindo, semi-transparentes
+      ctx.rotate(-a);
+      const phase2 = (b.x + b.y) * 0.05; // varia por posição pra dar movimento
+      for (let k = 0; k < 4; k++) {
+        const rr = 8 + k * 12 + (Math.sin(animTime * 8 + phase2) * 4);
+        const alpha = (0.8 - k * 0.18);
+        ctx.strokeStyle = `rgba(127,224,255,${alpha})`;
+        ctx.lineWidth = 3.5 - k * 0.5;
+        // leque na direção do disparo (arco de ~120°)
+        ctx.beginPath(); ctx.arc(0, 0, rr, a - 1.0, a + 1.0); ctx.stroke();
       }
-      ctx.fillStyle = 'rgba(127,224,255,.9)';
-      ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill();
+      // núcleo brilhante
+      ctx.fillStyle = 'rgba(180,240,255,.95)';
+      ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(127,224,255,.4)';
+      ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill();
     } else if (wpn === 'espada') {
       // risco dourado longo e afiado
       const grad = ctx.createLinearGradient(-30, 0, 12, 0);
@@ -697,9 +811,16 @@ function draw() {
   const sorted = [...state.players].sort((a, b) => b.kills - a.kills).slice(0, 5);
   document.getElementById('scoreboard').innerHTML =
     sorted.map(p => `${p.id === myId ? '▶ ' : ''}${p.name}: ${p.kills}💀`).join('<br>') || 'Placar';
+  // timer da rodada (mm:ss)
+  let timerStr = '';
+  if (state.timeLeft != null && state.phase === 'playing') {
+    const mm = Math.floor(state.timeLeft / 60), ss = state.timeLeft % 60;
+    timerStr = `<br>⏱️ ${mm}:${ss.toString().padStart(2,'0')}`;
+  }
   document.getElementById('status').innerHTML = me
-    ? `HP: ${Math.max(0, me.hp)}<br>Kills: ${me.kills}<br><b>💰 ${me.points} pts</b>` : 'Conectando...';
-  document.getElementById('dead').style.display = (me && !me.alive) ? 'flex' : 'none';
+    ? `HP: ${Math.max(0, me.hp)}<br>Kills: ${me.kills}<br><b>💰 ${me.points} pts</b>${timerStr}` : 'Conectando...';
+  // tela de morte só durante o jogo (não na votação, e não se banido)
+  document.getElementById('dead').style.display = (me && !me.alive && state.phase === 'playing' && !me.banned) ? 'flex' : 'none';
 
   requestAnimationFrame(draw);
 }
