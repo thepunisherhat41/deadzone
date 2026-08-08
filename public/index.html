@@ -2,12 +2,16 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>DEADZONE</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; touch-action: none; -webkit-user-select: none; user-select: none; }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-user-select: none; user-select: none; }
   html, body { width: 100%; height: 100%; overflow: hidden; background: #0d0d12; font-family: system-ui, sans-serif; }
-  #game { display: block; }
+  #game { display: block; touch-action: none; }
+  #stick, #aimStick, #bombBtn { touch-action: none; }
+  button, input { touch-action: manipulation; }
+  #shopBox, #voteCard { touch-action: pan-y; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+
 
   #start { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
            background: radial-gradient(circle at 50% 35%, #203650 0%, #101b2b 38%, #070b14 72%, #03050a 100%); z-index: 30; overflow: hidden; isolation: isolate; }
@@ -35,7 +39,9 @@
   #start button { position:relative; overflow:hidden; margin-top: 10px; padding: 15px 52px; font-size: 21px; border: 1px solid rgba(255,255,255,.3); border-radius: 13px; background: linear-gradient(180deg,#ff5669,#ef263f); color: #fff; font-weight: 950; letter-spacing: 2px; box-shadow: 0 5px 0 #a01828,0 12px 30px rgba(255,59,82,.24); }
   #start button::after { content:''; position:absolute; top:-40%; left:-45%; width:28%; height:180%; transform:rotate(24deg); background:linear-gradient(90deg,transparent,rgba(255,255,255,.48),transparent); animation:buttonShine 2.7s ease-in-out infinite; }
   #start button:active { transform: translateY(5px); box-shadow: 0 0 0 #a01828; }
-  #start .lvlnote { color: #9fc4e8; font-size: 12px; margin-top: 10px; min-height:15px; }
+  #start .lvlnote { color:#9fc4e8;font-size:12px;margin-top:6px;min-height:15px; }
+  #startStatus{min-height:18px;margin-top:8px;color:#d8e9f8;font-size:11px;font-weight:800;text-shadow:0 2px 5px #000}#startStatus.warn{color:#ffd79a}#startStatus.ok{color:#a7ffb7}#playBtn.loading{opacity:.85;pointer-events:none}
+  #netStatus{position:fixed;top:calc(max(8px,env(safe-area-inset-top)) + 48px);left:50%;transform:translateX(-50%);z-index:18;padding:4px 9px;border-radius:999px;background:rgba(5,8,14,.88);border:1px solid rgba(255,255,255,.14);color:#d8e9f8;font:900 9px system-ui;letter-spacing:1px;opacity:0;pointer-events:none}#netStatus.show{opacity:1}#netStatus.warn{color:#ffd79a;border-color:rgba(255,210,59,.34)}
 
   /* batalha animada da capa */
   #startBattle { position:absolute; inset:0; z-index:3; pointer-events:none; overflow:hidden; }
@@ -158,10 +164,8 @@
   .weaponIcon svg { width: 100%; height: 100%; display: block; overflow: visible; filter: drop-shadow(0 2px 2px rgba(0,0,0,.35)); }
 
   /* Loja */
-  #shop { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(4,6,12,.76); z-index: 45; padding: 18px; backdrop-filter: blur(8px); }
-  #shopBox { background: linear-gradient(180deg,#1b1e2a,#0f111a); border: 1px solid rgba(255,59,82,.8); border-radius: 20px; padding: 20px; width: min(440px, 94vw); max-height: min(720px,90vh); overflow-y: auto; box-shadow: 0 24px 70px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.04) inset; }
-  #shopBox h2 { color: var(--dz-red); text-align: center; margin-bottom: 4px; letter-spacing: 3px; font-size: 27px; }
-  #shopPts { color: var(--dz-yellow); text-align: center; margin-bottom: 14px; font-weight: 900; }
+  #shop { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(4,6,12,.76); z-index: 45; padding: 18px; backdrop-filter: blur(8px); overflow: hidden; }
+  #shopBox{background:linear-gradient(180deg,#1b1e2a,#0f111a);border:1px solid rgba(255,59,82,.8);border-radius:20px;width:min(470px,94vw);height:min(760px,90vh);max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 70px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.04) inset}#shopHeader{position:relative;flex:0 0 auto;padding:16px 18px 11px;border-bottom:1px solid rgba(255,255,255,.08);background:linear-gradient(180deg,#202330,#171923)}#shopHeader h2{color:var(--dz-red);text-align:center;margin-bottom:4px;letter-spacing:3px;font-size:27px}#shopPts{color:var(--dz-yellow);text-align:center;font-weight:900}#shopCloseTop{position:absolute;top:10px;right:10px;width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.16);background:#292c37;color:#fff;font-size:18px;font-weight:950;touch-action:manipulation}#shopScroll{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;padding:12px 16px calc(18px + env(safe-area-inset-bottom));touch-action:pan-y;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
   .shopItem { display: flex; justify-content: space-between; align-items: center; gap: 12px; background: linear-gradient(180deg,#202330,#171923); border: 1px solid rgba(255,255,255,.08); border-radius: 14px; padding: 11px 12px; margin-bottom: 9px; }
   .shopItem .info { color: #fff; display: flex; align-items: center; gap: 10px; min-width: 0; }
   .shopItem .info .weaponIcon { width: 38px; height: 38px; flex: 0 0 38px; }
@@ -171,7 +175,7 @@
   .buyBtn { background: var(--dz-yellow); color: #161000; }
   .ownedBtn { background: #2e8b57; color: #fff; }
   .cantBtn { background: #393b45; color: #8c909c; }
-  #shopClose { width: 100%; margin-top: 7px; padding: 12px; background: var(--dz-red); color: #fff; border: none; border-radius: 11px; font-weight: 950; }
+  #shopClose{width:100%;margin-top:12px;padding:13px;background:var(--dz-red);color:#fff;border:none;border-radius:11px;font-weight:950;touch-action:manipulation}
   .shopSectionTitle { margin: 16px 2px 8px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.08); color: #9fc4e8; font-size: 11px; letter-spacing: 2.2px; font-weight: 950; }
   .shopSectionTitle:first-child { margin-top: 2px; padding-top: 0; border-top: none; }
   .shopMetaPill { display:inline-block; margin-top:4px; padding:2px 6px; border-radius:999px; background:rgba(255,255,255,.06); color:#d8dfec; font-size:9px; font-weight:800; }
@@ -244,14 +248,15 @@
     #aimKnob { width: 60px; height: 60px; left: 31px; top: 31px; }
     #aimKnob .weaponIcon { width: 36px; height:36px; }
     #actions { bottom: max(22px, env(safe-area-inset-bottom)); right: 18px; }
-    #bombBtn { right: 48px; bottom: 160px; width:54px; height:54px; }
-    #bombBtn .bombIcon { width:28px; height:28px; }
+    #bombBtn { right: 46px; bottom: 154px; width:52px; height:52px; }
+    #bombBtn .bombIcon { width:27px; height:27px; }
     #aimHint { display: none; }
-    #weapons { bottom: 158px; left: 14px; right: auto; max-width: 52px; flex-direction: column; gap: 6px; align-items: flex-start; }
-    .wbtn { padding: 5px; width: 48px; height: 48px; min-height: 48px; justify-content: center; border-radius: 11px; }
-    .wbtn .weaponIcon { width: 33px; height: 33px; flex-basis:33px; }
+    /* 7+ armas sem tomar a tela inteira: dock 2xN pensado para portrait */
+    #weapons { bottom: 150px; left: 10px; right: auto; width: 91px; max-width: 91px; display:grid; grid-template-columns: repeat(2,43px); gap:5px; align-items:start; justify-content:start; }
+    .wbtn { padding: 4px; width: 43px; height: 43px; min-height: 43px; justify-content: center; border-radius: 10px; }
+    .wbtn .weaponIcon { width: 30px; height: 30px; flex-basis:30px; }
     .wbtn .wname { display: none; }
-    #chatBox { bottom: 165px; left: 72px; width: 190px; max-width: 52vw; }
+    #chatBox { bottom: 150px; left: 108px; width: 180px; max-width: calc(100vw - 220px); }
     #chatMsgs { font-size: 11px; }
     #vote { padding: 12px; align-items:center; }
     #voteCard { width: 100%; max-height: 86vh; border-radius: 18px; padding: 16px 12px; }
@@ -261,12 +266,37 @@
     .voteRow .who { font-size: 14px; }
     .voteRow button { padding: 9px 12px; font-size:14px; }
     #voteResult { font-size: 20px; padding-top:14px; }
-    #shopBox { padding:16px 12px; border-radius:17px; max-height:86vh; }
-    .shopItem { padding:9px; gap:7px; }
-    .shopItem .info .weaponIcon { width:34px; height:34px; flex-basis:34px; }
-    .shopItem .info small { font-size:9.5px; }
+    /* Loja mobile é uma tela própria. Evita corte e scroll quebrado pelo touch. */
+    #shop { padding:0; align-items:stretch; justify-content:stretch; background:rgba(5,7,13,.96); }
+    #shopBox { width:100%; max-width:none; height:100vh; height:100dvh; max-height:none; border-radius:0; border-left:0; border-right:0; padding: max(14px, env(safe-area-inset-top)) 10px calc(14px + env(safe-area-inset-bottom)); overflow-y:auto; touch-action:pan-y; }
+    #shopBox h2 { font-size:23px; position:sticky; top:0; z-index:4; background:linear-gradient(180deg,#171a25 75%,rgba(23,26,37,0)); padding:5px 0 8px; }
+    #shopPts { position:sticky; top:42px; z-index:4; background:rgba(20,23,33,.94); margin:0 -2px 9px; padding:7px 6px; border-radius:9px; font-size:12px; }
+    .shopItem { padding:9px 8px; gap:6px; border-radius:12px; }
+    .shopItem .info { gap:7px; }
+    .shopItem .info .weaponIcon, .shopIcon { width:32px; height:32px; flex-basis:32px; }
+    .shopItem .infoText { font-size:14px; }
+    .shopItem .info small { font-size:9px; line-height:1.22; }
+    .shopItem button { padding:9px 10px; font-size:12px; }
+    .shopSectionTitle { margin-top:12px; }
+    #shopClose { padding:14px; margin-top:10px; border-radius:12px; }
     #spectator { bottom: max(18px, env(safe-area-inset-bottom)); }
   }
+
+  .hudTitle{display:block;color:#9cb0c6;font-size:8px;letter-spacing:1.25px;font-weight:950;margin-bottom:3px}.hudPills{display:flex;flex-wrap:wrap;gap:4px;align-items:center}.hudPill{display:inline-flex;align-items:center;gap:3px;padding:3px 6px;border-radius:999px;background:rgba(255,255,255,.075);border:1px solid rgba(255,255,255,.08);white-space:nowrap;font-weight:900}.hudPill.hp{background:rgba(255,59,82,.13)}.hudPill.money{background:rgba(255,210,59,.13);color:#ffe68d}.hudPill.weapon{background:rgba(127,224,255,.11);color:#dff9ff;max-width:152px;overflow:hidden;text-overflow:ellipsis}.scoreLine{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:4px;align-items:center;margin-top:2px}.scoreLine .rank{color:#ffd23b;font-weight:950}.scoreLine .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.scoreLine.me .name{color:#ffd23b;font-weight:950}
+  @media (max-width:820px),(pointer:coarse){
+    html,body{overscroll-behavior:none}#scoreboard,#status,.iconbtn,#weapons,#spectatorCard{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+    #levelBadge{top:max(7px,env(safe-area-inset-top));min-width:110px;padding:5px 8px 6px;font-size:11px;border-radius:11px;z-index:14}#levelBadge small{font-size:8px}#xpBar{width:92px;height:4px;margin-top:3px}
+    #hud{top:max(7px,env(safe-area-inset-top));left:8px;right:8px;display:block;pointer-events:none}#scoreboard{position:absolute;left:0;top:0;width:102px;min-width:0;max-width:102px;min-height:49px;padding:6px 7px;font-size:8.8px;line-height:1.15;border-radius:11px}#status{position:absolute;top:53px;left:0;right:0;width:auto;max-width:none;min-width:0;margin:0;padding:6px 7px;font-size:9px;line-height:1.15;text-align:left;border-radius:11px;min-height:39px;background:rgba(8,10,16,.72)}
+    #topRight{top:max(7px,env(safe-area-inset-top));right:8px;flex-direction:row;gap:5px;z-index:15}.iconbtn{width:43px;height:43px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:11px;font-size:0;touch-action:manipulation}#shopBtn::before{content:'🛒';font-size:18px}#chatBtn::before{content:'💬';font-size:18px}#netStatus{top:calc(max(7px,env(safe-area-inset-top)) + 96px)}
+    #stick{width:106px;height:106px;left:14px;bottom:max(14px,env(safe-area-inset-bottom))}#stickKnob{width:48px;height:48px;left:29px;top:29px}#actions{right:14px;bottom:max(14px,env(safe-area-inset-bottom))}#aimStick{width:114px;height:114px}#aimKnob{width:58px;height:58px;left:28px;top:28px}#aimKnob .weaponIcon{width:34px;height:34px}#aimHint{display:none}
+    #weapons{left:8px;right:auto;bottom:126px;width:calc(100vw - 16px);max-width:none;padding:5px;display:flex;flex-direction:row;flex-wrap:nowrap;justify-content:flex-start;gap:5px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity;scrollbar-width:none;touch-action:pan-x;background:rgba(7,9,15,.78);border:1px solid rgba(255,255,255,.08);border-radius:13px;box-shadow:0 7px 20px rgba(0,0,0,.24)}#weapons::-webkit-scrollbar{display:none}.wbtn{flex:0 0 72px;width:72px;height:55px;min-height:55px;padding:4px 3px;flex-direction:column;justify-content:center;gap:2px;border-radius:10px;scroll-snap-align:center;touch-action:manipulation}.wbtn .weaponIcon{width:27px;height:27px;flex:0 0 27px}.wbtn .wname{display:block!important;width:100%;font-size:8px;line-height:1.02;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.wbtn.locked{display:none}
+    #bombBtn{right:18px;bottom:166px;width:46px;height:46px}.bombIcon{width:25px!important;height:25px!important}#chatBox{left:8px;bottom:188px;width:210px;max-width:58vw;max-height:72px;overflow:hidden}#chatMsgs{font-size:9.5px;gap:3px}#chatMsgs div{padding:4px 7px}
+    #vote{padding:0;align-items:stretch;justify-content:stretch;background:rgba(3,5,11,.93);backdrop-filter:none}#voteCard{width:100%;height:100dvh;max-height:none;border-radius:0;border:0;padding:calc(12px + env(safe-area-inset-top)) 10px calc(16px + env(safe-area-inset-bottom));overflow-y:auto;touch-action:pan-y;-webkit-overflow-scrolling:touch}#vote h2{font-size:clamp(21px,6vw,27px);text-align:left;margin-top:11vh}#voteTimer{font-size:38px;margin:8px 0 14px}.voteRow{grid-template-columns:minmax(0,1fr) 26px auto;padding:9px;gap:6px}.voteRow .who{font-size:13px}.voteRow button{padding:8px 11px;font-size:13px}#skipVote{position:sticky;bottom:8px;z-index:2;padding:12px}
+    #shop{padding:0;align-items:stretch;justify-content:stretch;background:#090b12;backdrop-filter:none}#shopBox{width:100%;max-width:none;height:100dvh;max-height:none;border:0;border-radius:0;padding:0;overflow:hidden}#shopHeader{padding:calc(10px + env(safe-area-inset-top)) 12px 8px}#shopHeader h2{position:static;background:none;padding:0;font-size:22px;margin:0 0 2px}#shopPts{position:static;background:none;margin:0;padding:0;font-size:12px}#shopCloseTop{top:calc(8px + env(safe-area-inset-top));right:10px;width:36px;height:36px}#shopScroll{padding:9px 9px calc(24px + env(safe-area-inset-bottom));overflow-y:scroll}.shopItem{padding:8px;gap:7px;border-radius:11px;margin-bottom:7px}.shopItem .info{gap:7px}.shopItem .info .weaponIcon,.shopIcon{width:32px;height:32px;flex-basis:32px}.shopItem .infoText{font-size:13px}.shopItem .info small{font-size:8.7px;line-height:1.2}.shopItem button{padding:8px 9px;font-size:11px}.shopSectionTitle{margin:10px 2px 7px;font-size:9px}.shopMetaPill{font-size:8px}#shopClose{padding:13px;margin-top:12px}
+    #dead{padding:16px}#spectator{bottom:max(14px,env(safe-area-inset-bottom))}#start::before{opacity:.36}.battleSpeedLines{opacity:.05}.startContent{transform:translateY(-1vh)}.battleLane.laneThree{display:none}.pickupVest{display:none}
+  }
+  @media (max-width:370px){#scoreboard{width:94px;max-width:94px;font-size:8.2px}.wbtn{flex-basis:67px;width:67px}.hudPill{padding:3px 5px;font-size:8.4px}#status{font-size:8.5px}}
+
 </style>
 </head>
 <body>
@@ -328,10 +358,12 @@
       <span class="startChip"><span class="miniStartIcon" data-start-utility="mamaeMarcia"></span>Mamãe Márcia</span>
       <span class="startChip"><span class="miniStartIcon" data-start-utility="pingaLele"></span>Pinga do Lelê</span>
       <span class="startChip"><span class="miniStartIcon" data-start-skin="gravida"></span>Gestante</span>
+      <span class="startChip"><span class="miniStartIcon" data-start-skin="bubu"></span>Bubu</span>
       <span class="startChip"><span class="miniStartIcon" data-start-skin="capivara"></span>Capivara</span>
     </div>
     <input id="nameInput" maxlength="12" placeholder="Seu nome de guerra">
     <button id="playBtn">JOGAR ▶</button>
+    <div id="startStatus">Digite seu nome e toque em jogar.</div>
     <div class="lvlnote" id="lvlnote"></div>
   </div>
 </div>
@@ -344,6 +376,7 @@
 </div>
 
 <div id="levelBadge">NÍVEL 1<small>0 XP</small><div id="xpBar"><div id="xpFill"></div></div></div>
+<div id="netStatus">CONECTANDO...</div>
 
 <div id="topRight">
   <button class="iconbtn" id="shopBtn">🛒 Loja</button>
@@ -380,10 +413,8 @@
 
 <div id="shop">
   <div id="shopBox">
-    <h2>LOJA</h2>
-    <div id="shopPts">Pontos: 0</div>
-    <div id="shopItems"></div>
-    <button id="shopClose">FECHAR</button>
+    <div id="shopHeader"><h2>LOJA</h2><div id="shopPts">Pontos: 0</div><button id="shopCloseTop" aria-label="Fechar loja">✕</button></div>
+    <div id="shopScroll"><div id="shopItems"></div><button id="shopClose">FECHAR LOJA</button></div>
   </div>
 </div>
 
@@ -407,17 +438,20 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 let W, H, DPR = 1;
 function resize() {
-  DPR = Math.min(window.devicePixelRatio || 1, 2); // até 2x pra não pesar demais
+  const coarse=window.matchMedia&&window.matchMedia('(pointer: coarse)').matches;
+  DPR=Math.min(window.devicePixelRatio||1,coarse?1.5:2);
   W = window.innerWidth; H = window.innerHeight;
   canvas.width = W * DPR; canvas.height = H * DPR;
   canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0); // desenha em coordenadas CSS, nitidez retina
 }
-window.addEventListener('resize', resize); resize();
+window.addEventListener('resize', resize);
+if (window.visualViewport) window.visualViewport.addEventListener('resize', resize);
+resize();
 
 let ws, myId = null, world = { w: 1600, h: 1200 }, weapons = {}, utilities = {}, skins = {}, gameMap = { walls: [], floor: '#2a2e3a' };
 let currentMapName = '';
-let state = { players: [], bullets: [], events: [], chat: [], phase: 'playing' };
+let state = { players: [], bullets: [], bombs: [], pickups: [], events: [], chat: [], phase: 'playing' };
 let spectateTargetId = null;
 let myAngle = 0;
 const input = { up: false, down: false, left: false, right: false };
@@ -427,6 +461,22 @@ const render = {}; // posições interpoladas por id: {x,y,tx,ty}
 
 const particles = [], decals = [], muzzles = [], auras = [];
 let shake = 0;
+let resumePending = false;
+
+function createSessionToken() {
+  try {
+    const bytes = new Uint8Array(24); crypto.getRandomValues(bytes);
+    return Array.from(bytes, b => b.toString(16).padStart(2,'0')).join('');
+  } catch {
+    return 'dz_' + Date.now().toString(36) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+  }
+}
+let sessionToken = '';
+try { sessionToken = localStorage.getItem('deadzone_session_token') || ''; } catch {}
+if (!sessionToken || sessionToken.length < 20) {
+  sessionToken = createSessionToken();
+  try { localStorage.setItem('deadzone_session_token', sessionToken); } catch {}
+}
 
 // ==================== SISTEMA DE LEVEL (localStorage) ====================
 // XP persiste no navegador do jogador. Cada kill dá XP; nível sobe por limiar crescente.
@@ -523,6 +573,12 @@ const sound = {
   coco:    () => { noise(0.20,0.14,'lowpass',650); tone(105,0.20,'sine',0.09,52); },
   // espada-de-são-jorge: folha cortando o ar, sem som metálico
   espada:  () => { noise(0.15,0.075,'bandpass',1700); setTimeout(()=>tone(260,0.07,'triangle',0.06,170),55); },
+  // peido: curto, grave e soprado, sem reaproveitar o som de nenhuma arma
+  peido:   () => { tone(88,0.26,'sawtooth',0.07,48); noise(0.24,0.08,'lowpass',520); },
+  // Lilika: guincho cartunesco + giro
+  lilika:()=>{tone(620,0.12,'square',0.06,980);setTimeout(()=>tone(980,0.12,'triangle',0.055,430),80);noise(0.08,0.025,'bandpass',1800)},
+  dracarys:()=>{noise(0.18,0.07,'bandpass',980);tone(210,0.12,'sawtooth',0.075,120);setTimeout(()=>tone(145,0.11,'triangle',0.05,88),35)},
+  heal:    () => { tone(540,0.07,'sine',0.06,720); setTimeout(()=>tone(820,0.09,'sine',0.06,1060),70); },
   bomb:    () => { noise(0.34,0.19,'lowpass',820); tone(82,0.36,'sine',0.16,38); setTimeout(()=>noise(0.18,0.08,'highpass',1500),30); },
   armor:   () => { tone(760,0.07,'square',0.05,560); tone(1080,0.04,'sine',0.04,820); },
   death:   () => { tone(190,0.42,'sawtooth',0.17,42); noise(0.18,0.05,'lowpass',500); },
@@ -550,6 +606,12 @@ function spawnArmorSpark(x, y) {
     particles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 1, r: 1.5 + Math.random() * 2.5, type: 'armor' });
   }
 }
+function spawnHeal(x, y) {
+  for (let i = 0; i < 18; i++) {
+    const a = Math.random()*Math.PI*2, sp = .8 + Math.random()*2.8;
+    particles.push({ x, y, vx: Math.cos(a)*sp, vy: Math.sin(a)*sp-1.2, life: 1, r: 2 + Math.random()*3, type: 'heal' });
+  }
+}
 function spawnExplosion(x, y, radius) {
   const count = 44;
   for (let i = 0; i < count; i++) {
@@ -565,78 +627,19 @@ function addDeathPool(x, y) {
   shake = Math.min(shake + 8, 14);
 }
 
-function connect() {
-  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  ws = new WebSocket(`${proto}://${location.host}`);
-  ws.onmessage = (ev) => {
-    const msg = JSON.parse(ev.data);
-    if (msg.type === 'init') {
-      myId = msg.id; world = msg.world; weapons = msg.weapons; utilities = msg.utilities || {}; skins = msg.skins || {}; gameMap = msg.map; currentMapName = (msg.map && msg.map.name) || '';
-      buildWeaponBar(); buildShop(); setAimWeaponIcon(currentWeapon);
-    } else if (msg.type === 'state') {
-      state = msg;
-      myData = state.players.find(p => p.id === myId) || myData;
-      // guarda alvo de interpolação por jogador
-      for (const p of state.players) {
-        if (!render[p.id]) render[p.id] = { x: p.x, y: p.y };
-        render[p.id].tx = p.x; render[p.id].ty = p.y;
-      }
-      for (const id in render) if (!state.players.find(p => p.id == id)) delete render[id];
-      if (msg.events) for (const e of msg.events) {
-        if (e.kind === 'hit') { spawnBlood(e.x, e.y, e.angle, 8); shake = Math.min(shake + 3, 10); sound.hit(); }
-        else if (e.kind === 'armorHit') { spawnArmorSpark(e.x, e.y); sound.armor(); }
-        else if (e.kind === 'bombExplosion') { spawnExplosion(e.x, e.y, e.radius || 150); shake = Math.min(shake + 10, 16); sound.bomb(); }
-        else if (e.kind === 'death') { addDeathPool(e.x, e.y); sound.death(); }
-        else if (e.kind === 'spark') spawnSpark(e.x, e.y);
-        else if (e.kind === 'muzzle') {
-          muzzles.push({ x: e.x, y: e.y, angle: e.angle, weapon: e.weapon || 'chinelo', life: 1 });
-          // o servidor agora informa a arma exata, evitando som incorreto por aproximação de posição
-          const me = state.players.find(p => p.id === myId);
-          if (me && Math.hypot(me.x - e.x, me.y - e.y) < 900) sound.shoot(e.weapon || 'chinelo');
-        }
-        else if (e.kind === 'kill') {
-          // aura super sayajin no matador
-          auras.push({ id: e.killer, life: 1.4 });
-          if (e.killer === myId) { addXp(60); } // XP só pra mim, salvo no meu navegador
-        }
-      }
-      if (msg.chat && msg.chat.length) for (const c of msg.chat) addChat(c);
-      refreshWeaponBar(); refreshShop();
-      updateVoteUI(); // atualiza tela de votação conforme a fase
-      updateSpectatorUI();
-    } else if (msg.type === 'newMap') {
-      gameMap = msg.map; currentMapName = msg.name || (msg.map && msg.map.name) || '';
-      // a mensagem de nova tela já chega pelo chat do servidor; não duplica no cliente
-    } else if (msg.type === 'ping') {
-      send({ type: 'pong' });
-    } else if (msg.type === 'buyResult') {
-      if (msg.ok) { currentWeapon = msg.weapon; setAimWeaponIcon(currentWeapon); sound.buy(); flashMsg('Comprado! ' + weapons[msg.weapon].name); }
-      else flashMsg('❌ ' + msg.reason);
-    } else if (msg.type === 'shopResult') {
-      if (msg.ok) { sound.buy(); flashMsg(msg.message || 'Compra realizada!'); }
-      else flashMsg('❌ ' + (msg.reason || 'não foi possível comprar'));
-    }
-  };
-  ws.onclose = () => setTimeout(connect, 1000);
-}
-function send(obj) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj)); }
-
-let myName = 'Player';
-// mostra o nível salvo na abertura
-(function(){ const n = document.getElementById('lvlnote'); if (n) n.textContent = profile.level > 1 ? `🔥 Bem-vindo de volta! Você é nível ${profile.level}` : ''; })();
-document.getElementById('playBtn').onclick = () => {
-  myName = document.getElementById('nameInput').value.trim() || 'Player';
-  initAudio(); // precisa ser após um toque/clique do usuário
-  profile.level = levelFromXp(profile.xp);
-  updateLevelUI();
-  connect();
-  const wait = setInterval(() => { if (myId !== null) { clearInterval(wait); send({ type: 'setName', name: myName, level: profile.level }); } }, 100);
-  document.getElementById('start').style.display = 'none';
-};
+let myName='Player';let playRequested=false,joinedOnce=false,reconnectTimer=null,reconnectDelay=800,connectAttempt=0;
+const startStatusEl=document.getElementById('startStatus'),netStatusEl=document.getElementById('netStatus'),playBtnEl=document.getElementById('playBtn');
+function setStartStatus(t,c=''){if(startStatusEl){startStatusEl.className=c;startStatusEl.textContent=t||''}}function setNetStatus(t,w=false){if(netStatusEl){netStatusEl.textContent=t;netStatusEl.className=(t&&t!=='ONLINE'?'show':'')+(w?' warn':'')}}function setPlayLoading(on){if(playBtnEl){playBtnEl.classList.toggle('loading',!!on);playBtnEl.disabled=!!on;playBtnEl.textContent=on?'ENTRANDO...':'JOGAR ▶'}}
+function scheduleReconnect(){if(!playRequested||reconnectTimer)return;const wait=Math.min(5000,reconnectDelay+Math.floor(Math.random()*250));reconnectTimer=setTimeout(()=>{reconnectTimer=null;reconnectDelay=Math.min(5000,Math.round(reconnectDelay*1.55));connect()},wait)}
+function enterArena(){if(joinedOnce)return;joinedOnce=true;setPlayLoading(false);setStartStatus('Conectado. Boa sorte!','ok');setTimeout(()=>document.getElementById('start').style.display='none',100)}
+function pauseLocalControls(){input.up=input.down=input.left=input.right=false;try{stopAutoFire();aiming=false;centerJoystick(stick,knob);centerJoystick(aimStick,aimKnob)}catch{}send({type:'pause'})}
+function connect(){if(!playRequested)return;if(ws&&(ws.readyState===WebSocket.OPEN||ws.readyState===WebSocket.CONNECTING))return;connectAttempt++;setNetStatus('CONECTANDO...',true);if(!joinedOnce)setStartStatus(connectAttempt===1?'Conectando ao servidor...':'Servidor acordando. Tentando novamente...',connectAttempt>1?'warn':'');const proto=location.protocol==='https:'?'wss':'ws',socket=new WebSocket(`${proto}://${location.host}?session=${encodeURIComponent(sessionToken)}`);ws=socket;const watchdog=setTimeout(()=>{if(ws===socket&&socket.readyState!==WebSocket.CLOSED&&!joinedOnce){setStartStatus('A conexão demorou. Reconectando...','warn');try{socket.close()}catch{}}},9000);socket.onopen=()=>{reconnectDelay=800;setNetStatus('SINCRONIZANDO...');if(!joinedOnce)setStartStatus('Servidor online. Sincronizando arena...')};socket.onmessage=ev=>{let msg;try{msg=JSON.parse(ev.data)}catch{return}if(msg.type==='init'){clearTimeout(watchdog);myId=msg.id;world=msg.world;weapons=msg.weapons;utilities=msg.utilities||{};skins=msg.skins||{};gameMap=msg.map;currentMapName=(msg.map&&msg.map.name)||'';if(msg.sessionToken){sessionToken=msg.sessionToken;try{localStorage.setItem('deadzone_session_token',sessionToken)}catch{}}resumePending=!!msg.resumed;buildWeaponBar();buildShop();send({type:'setName',name:myName,level:profile.level});setNetStatus('ONLINE')}else if(msg.type==='state'){state=msg;myData=state.players.find(p=>p.id===myId)||myData;if(myData){currentWeapon=myData.weapon||currentWeapon;setAimWeaponIcon(currentWeapon);if(!joinedOnce)enterArena()}if(resumePending&&myData){resumePending=false;flashMsg('🔄 Sessão retomada. Você voltou de onde parou.')}for(const p of state.players){if(!render[p.id])render[p.id]={x:p.x,y:p.y};render[p.id].tx=p.x;render[p.id].ty=p.y}for(const id in render)if(!state.players.find(p=>p.id==id))delete render[id];if(msg.events)for(const e of msg.events){if(e.kind==='hit'){spawnBlood(e.x,e.y,e.angle,8);shake=Math.min(shake+3,10);sound.hit()}else if(e.kind==='armorHit'){spawnArmorSpark(e.x,e.y);sound.armor()}else if(e.kind==='bombExplosion'){spawnExplosion(e.x,e.y,e.radius||150);shake=Math.min(shake+10,16);sound.bomb()}else if(e.kind==='heal'){spawnHeal(e.x,e.y);if(e.player===myId){sound.heal();flashMsg(`🔥 Churrasco da Mamãe Márcia: +${e.amount||0} HP`)}}else if(e.kind==='death'){addDeathPool(e.x,e.y);sound.death()}else if(e.kind==='spark')spawnSpark(e.x,e.y);else if(e.kind==='muzzle'){muzzles.push({x:e.x,y:e.y,angle:e.angle,weapon:e.weapon||'chinelo',life:1});const me=state.players.find(p=>p.id===myId);if(me&&Math.hypot(me.x-e.x,me.y-e.y)<900)sound.shoot(e.weapon||'chinelo')}else if(e.kind==='kill'){auras.push({id:e.killer,life:1.4});if(e.killer===myId)addXp(60)}}if(msg.chat&&msg.chat.length)for(const c of msg.chat)addChat(c);refreshWeaponBar();refreshShop();updateVoteUI();updateSpectatorUI()}else if(msg.type==='newMap'){gameMap=msg.map;currentMapName=msg.name||(msg.map&&msg.map.name)||''}else if(msg.type==='ping')send({type:'pong'});else if(msg.type==='buyResult'){if(msg.ok){currentWeapon=msg.weapon;setAimWeaponIcon(currentWeapon);sound.buy();flashMsg('Comprado! '+weapons[msg.weapon].name)}else flashMsg('❌ '+msg.reason)}else if(msg.type==='shopResult'){if(msg.ok){sound.buy();flashMsg(msg.message||'Compra realizada!')}else flashMsg('❌ '+(msg.reason||'não foi possível comprar'))}};socket.onerror=()=>{setNetStatus('CONEXÃO INSTÁVEL',true);if(!joinedOnce)setStartStatus('Conexão instável. Tentando novamente...','warn')};socket.onclose=()=>{clearTimeout(watchdog);if(ws!==socket)return;setNetStatus('RECONECTANDO...',true);pauseLocalControls();scheduleReconnect()}}
+function send(o){if(ws&&ws.readyState===WebSocket.OPEN){try{ws.send(JSON.stringify(o))}catch{}}}
+try{const n=localStorage.getItem('deadzone_last_name');if(n)document.getElementById('nameInput').value=n}catch{}(function(){const n=document.getElementById('lvlnote');if(n)n.textContent=profile.level>1?`🔥 Bem-vindo de volta! Você é nível ${profile.level}`:''})();document.getElementById('playBtn').onclick=()=>{myName=document.getElementById('nameInput').value.trim()||'Player';try{localStorage.setItem('deadzone_last_name',myName)}catch{}initAudio();profile.level=levelFromXp(profile.xp);updateLevelUI();playRequested=true;joinedOnce=false;connectAttempt=0;reconnectDelay=800;setPlayLoading(true);setStartStatus('Preparando sua entrada...');connect()};window.addEventListener('online',()=>{if(playRequested){setNetStatus('RECONECTANDO...',true);connect()}});window.addEventListener('offline',()=>setNetStatus('SEM INTERNET',true));document.addEventListener('visibilitychange',()=>{if(document.hidden)pauseLocalControls();else if(playRequested&&(!ws||ws.readyState!==WebSocket.OPEN))connect()});window.addEventListener('pagehide',pauseLocalControls);window.addEventListener('blur',pauseLocalControls);
 
 // ---- Ícones vetoriais do arsenal ----
-function weaponIconSvg(key) {
-  const open = '<svg viewBox="0 0 64 64" aria-hidden="true">';
+const WEAPON_ICON_KIND={chinelo:'chinelo',grito:'grito',escova:'escova',coco:'coco',espada:'espada',peido:'peido',lilika:'lilika',dracarys:'dracarys'};
+function weaponIconSvg(key){key=WEAPON_ICON_KIND[key]||key;const open='<svg viewBox="0 0 64 64" aria-hidden="true">';
   if (key === 'chinelo') return open + `
     <g transform="rotate(-24 32 32)">
       <path d="M23 8c7-2 15 0 18 6 4 8 1 20-3 31-3 8-8 12-14 10-6-2-7-9-5-18 2-10 1-18 4-29z" fill="#ff68ad" stroke="#a91d61" stroke-width="3"/>
@@ -648,6 +651,23 @@ function weaponIconSvg(key) {
     <path d="M22 37l4 14h-8l-4-14" fill="#3ca8cf" stroke="#176d91" stroke-width="3"/>
     <path d="M45 24c6 5 6 11 0 16M50 18c10 9 10 19 0 28" fill="none" stroke="#bff3ff" stroke-width="3.5" stroke-linecap="round"/>
     </svg>`;
+  if(key==='dracarys')return open+`<g><path d="M31 6c10 9 12 17 7 25 10-3 18 8 11 18-6 8-18 8-26 3C10 44 9 30 18 20c4-5 8-9 13-14z" fill="#ff8438" stroke="#922f0b" stroke-width="3"/><path d="M31 18c6 6 6 11 2 16 5-1 8 5 5 9-4 5-10 4-14 1-6-5-6-12-2-17 2-3 5-6 9-9z" fill="#ffd45c"/></g></svg>`;
+  if (key === 'peido') return open + `
+    <g>
+      <path d="M14 39c-8-8-1-18 9-16-2-10 13-15 19-5 9-5 17 6 11 14 9 7 1 19-9 16H24c-8 1-14-3-10-9z" fill="#8fbc58" stroke="#476d2c" stroke-width="3"/>
+      <path d="M17 37c8-4 14-3 20 1M24 28c7-3 13-1 18 4M35 44c5-3 10-2 14 1" fill="none" stroke="#d7ed9b" stroke-width="2.5" stroke-linecap="round" opacity=".8"/>
+      <circle cx="26" cy="34" r="2" fill="#45652d"/><circle cx="41" cy="29" r="1.6" fill="#45652d"/>
+    </g></svg>`;
+  if (key === 'lilika') return open + `
+    <g transform="rotate(-8 32 32)">
+      <circle cx="32" cy="19" r="10" fill="#9b684e" stroke="#412739" stroke-width="3"/>
+      <path d="M21 16c2-11 21-13 24 0-6-4-9-6-14-5-4 0-7 2-10 5z" fill="#17131d"/>
+      <circle cx="27" cy="19" r="2.3" fill="#ff3b52"/><circle cx="37" cy="19" r="2.3" fill="#ff3b52"/>
+      <path d="M27 25c3-2 7-2 10 0" fill="none" stroke="#321b29" stroke-width="2" stroke-linecap="round"/>
+      <path d="M23 30c5-5 14-5 19 0l5 19H17z" fill="#71378d" stroke="#3a1d4d" stroke-width="3"/>
+      <path d="M21 35l-9 9M43 35l9 9M25 49l-4 9M39 49l4 9" stroke="#9b684e" stroke-width="5" stroke-linecap="round"/>
+      <path d="M13 10l4 5M51 11l-4 5M10 27l6 1M54 27l-6 1" stroke="#c85cff" stroke-width="2.5" stroke-linecap="round"/>
+    </g></svg>`;
   if (key === 'escova') return open + `
     <g transform="rotate(8 32 32)">
       <rect x="16" y="7" width="31" height="31" rx="8" fill="#f43591" stroke="#a90d5c" stroke-width="3"/>
@@ -665,12 +685,7 @@ function weaponIconSvg(key) {
     <circle cx="26" cy="34" r="1" fill="#111"/><circle cx="39" cy="34" r="1" fill="#111"/>
     <path d="M27 41c3 2 7 2 10 0" fill="none" stroke="#27160d" stroke-width="2.5" stroke-linecap="round"/>
     </svg>`;
-  return open + `
-    <g transform="rotate(24 32 32)">
-      <path d="M31 58C22 44 20 28 31 5c12 21 10 38 0 53z" fill="#4f9e3d" stroke="#1d5e2b" stroke-width="3"/>
-      <path d="M31 54V10" stroke="#d6df64" stroke-width="3" stroke-linecap="round"/>
-      <path d="M26 42l8-5M25 32l10-5M27 23l7-4" stroke="#1d6d34" stroke-width="2" opacity=".8"/>
-    </g></svg>`;
+  if(key==='espada')return open+`<g transform="rotate(24 32 32)"><path d="M31 58C22 44 20 28 31 5c12 21 10 38 0 53z" fill="#4f9e3d" stroke="#1d5e2b" stroke-width="3"/><path d="M31 54V10" stroke="#d6df64" stroke-width="3" stroke-linecap="round"/><path d="M26 42l8-5M25 32l10-5M27 23l7-4" stroke="#1d6d34" stroke-width="2" opacity=".8"/></g></svg>`;return open+`<circle cx="32" cy="32" r="23" fill="#292d38" stroke="#737b8c" stroke-width="3"/><text x="32" y="40" text-anchor="middle" font-size="26" font-weight="900" fill="#fff">?</text></svg>`;
 }
 function utilityIconSvg(key) {
   const open = '<svg viewBox="0 0 64 64" aria-hidden="true">';
@@ -701,6 +716,7 @@ function skinIconSvg(key) {
     <ellipse cx="36" cy="39" rx="11" ry="10" fill="#c65b9d" stroke="#72295a" stroke-width="2"/>
     <path d="M25 50l-2 10M39 50l2 10" stroke="#70452f" stroke-width="5" stroke-linecap="round"/>
     </svg>`;
+  if(key==='bubu')return open+`<circle cx="32" cy="16" r="9" fill="#f0d4c1"/><path d="M22 14c2-10 19-12 20 1-5-4-7-6-11-5-4 0-7 2-9 4z" fill="#6b3b25"/><path d="M23 26c5-4 12-4 17 0 5 5 5 14 2 24H21c-3-9-3-18 2-24z" fill="#d65355" stroke="#842c31" stroke-width="2"/><ellipse cx="36" cy="39" rx="11" ry="10" fill="#ef8e80" stroke="#842c31" stroke-width="2"/><path d="M25 50l-2 10M39 50l2 10" stroke="#f0d4c1" stroke-width="5" stroke-linecap="round"/><path d="M48 28c8 1 10 6 6 11-3 4-8 5-14 3 4-3 5-8 8-14z" fill="#ff8438" stroke="#922f0b" stroke-width="2"/></svg>`;
   if (key === 'capivara') return open + `
     <ellipse cx="31" cy="36" rx="21" ry="15" fill="#9a6740" stroke="#5d3822" stroke-width="3"/>
     <ellipse cx="44" cy="29" rx="13" ry="11" fill="#aa754c" stroke="#5d3822" stroke-width="3"/>
@@ -775,8 +791,7 @@ function buildShop() {
   items.innerHTML = '';
 
   items.appendChild(makeShopTitle('🔫 ARMAS'));
-  for (const key in weapons) {
-    const w = weapons[key];
+  for(const key in weapons){const w=weapons[key];if(w.hiddenShop)continue;
     const cadence = Math.round(1000 / w.cooldown * 10) / 10;
     const row = makeShopRow('weapon', key, weaponIconSvg(key), w.name,
       `${escapeHtml(w.description || '')}<br>Dano ${w.damage} • alcance ${w.range}px • ${cadence}/s`);
@@ -842,10 +857,10 @@ function refreshShop() {
   });
   updateBombButton();
 }
-function openShop() { document.getElementById('shop').style.display = 'flex'; refreshShop(); }
+function openShop(){document.getElementById('shop').style.display='flex';const sc=document.getElementById('shopScroll');if(sc)sc.scrollTop=0;refreshShop()}
 function closeShop() { document.getElementById('shop').style.display = 'none'; }
 document.getElementById('shopBtn').onclick = openShop;
-document.getElementById('shopClose').onclick = closeShop;
+document.getElementById('shopClose').onclick=closeShop;const shopCloseTop=document.getElementById('shopCloseTop');if(shopCloseTop)shopCloseTop.onclick=closeShop;
 document.getElementById('deadShop').onclick = openShop;
 
 function updateBombButton() {
@@ -977,50 +992,70 @@ function canControlPlayer() {
   return !!myData && myData.alive && !myData.spectating && state.phase === 'playing';
 }
 
-// ---- Joystick de MOVIMENTO (esquerdo) — só anda, não mira ----
+// ---- Joysticks MOBILE: centro e alcance calculados pelo tamanho real renderizado ----
+// A versão anterior usava os centros desktop (65/75px) mesmo quando o CSS reduzia os sticks no celular.
 const stick = document.getElementById('stick'), knob = document.getElementById('stickKnob');
-let stickId = null; const maxDist = 48;
-stick.addEventListener('touchstart', (e) => { if (!canControlPlayer()) return; stickId = e.changedTouches[0].identifier; e.preventDefault(); });
+const aimStick = document.getElementById('aimStick'), aimKnob = document.getElementById('aimKnob');
+let stickId = null, aimId = null, aiming = false, fireInterval = null;
+
+function joystickVector(base, handle, clientX, clientY) {
+  const rect = base.getBoundingClientRect();
+  const hw = handle.offsetWidth || 50, hh = handle.offsetHeight || 50;
+  const centerX = rect.width / 2, centerY = rect.height / 2;
+  let dx = clientX - rect.left - centerX, dy = clientY - rect.top - centerY;
+  const d = Math.hypot(dx,dy);
+  const maxDist = Math.max(20, Math.min(rect.width,rect.height)/2 - Math.max(hw,hh)/2 + 2);
+  if (d > maxDist) { dx = dx / d * maxDist; dy = dy / d * maxDist; }
+  handle.style.left = (centerX - hw/2 + dx) + 'px';
+  handle.style.top = (centerY - hh/2 + dy) + 'px';
+  return { dx, dy, d, maxDist };
+}
+function centerJoystick(base, handle) {
+  const rect = base.getBoundingClientRect();
+  const hw = handle.offsetWidth || 50, hh = handle.offsetHeight || 50;
+  handle.style.left = (rect.width/2 - hw/2) + 'px';
+  handle.style.top = (rect.height/2 - hh/2) + 'px';
+}
+
+stick.addEventListener('touchstart', (e) => {
+  if (!canControlPlayer()) return;
+  stickId = e.changedTouches[0].identifier;
+  const t=e.changedTouches[0]; joystickVector(stick,knob,t.clientX,t.clientY);
+  e.preventDefault();
+}, { passive:false });
 stick.addEventListener('touchmove', (e) => {
   for (const t of e.changedTouches) {
     if (t.identifier !== stickId) continue;
-    const rect = stick.getBoundingClientRect();
-    let dx = t.clientX - rect.left - 65, dy = t.clientY - rect.top - 65;
-    const d = Math.hypot(dx, dy);
-    if (d > maxDist) { dx = dx / d * maxDist; dy = dy / d * maxDist; }
-    knob.style.left = (36 + dx) + 'px'; knob.style.top = (36 + dy) + 'px';
-    const dead = 12;
-    input.left = dx < -dead; input.right = dx > dead; input.up = dy < -dead; input.down = dy > dead;
-    // se não estiver mirando, o personagem "olha" pra onde anda (fallback)
-    if (d > dead && !aiming) myAngle = Math.atan2(dy, dx);
+    const v = joystickVector(stick,knob,t.clientX,t.clientY);
+    const dead = Math.max(8, v.maxDist*.24);
+    input.left = v.dx < -dead; input.right = v.dx > dead; input.up = v.dy < -dead; input.down = v.dy > dead;
+    if (v.d > dead && !aiming) myAngle = Math.atan2(v.dy, v.dx);
   }
   e.preventDefault();
-});
-function stickEnd() { stickId = null; knob.style.left = '36px'; knob.style.top = '36px'; input.up = input.down = input.left = input.right = false; }
-stick.addEventListener('touchend', stickEnd); stick.addEventListener('touchcancel', stickEnd);
+}, { passive:false });
+function stickEnd() { stickId = null; centerJoystick(stick,knob); input.up = input.down = input.left = input.right = false; }
+stick.addEventListener('touchend', stickEnd, { passive:false }); stick.addEventListener('touchcancel', stickEnd, { passive:false });
 
-// ---- Joystick de MIRA (direito) — estilo Free Fire: arrasta pra mirar, atira sozinho ----
-const aimStick = document.getElementById('aimStick'), aimKnob = document.getElementById('aimKnob');
-let aimId = null, aiming = false, fireInterval = null;
-const aimMax = 55;
 function startAutoFire() { if (!canControlPlayer() || fireInterval) return; send({ type: 'attack' }); fireInterval = setInterval(() => { if (canControlPlayer()) send({ type: 'attack' }); else stopAutoFire(); }, 110); }
 function stopAutoFire() { clearInterval(fireInterval); fireInterval = null; }
-aimStick.addEventListener('touchstart', (e) => { if (!canControlPlayer()) return; aimId = e.changedTouches[0].identifier; aiming = true; e.preventDefault(); });
+aimStick.addEventListener('touchstart', (e) => {
+  if (!canControlPlayer()) return;
+  aimId = e.changedTouches[0].identifier; aiming = true;
+  const t=e.changedTouches[0]; const v=joystickVector(aimStick,aimKnob,t.clientX,t.clientY);
+  if (v.d > Math.max(8,v.maxDist*.22)) { myAngle=Math.atan2(v.dy,v.dx); startAutoFire(); }
+  e.preventDefault();
+}, { passive:false });
 aimStick.addEventListener('touchmove', (e) => {
   for (const t of e.changedTouches) {
     if (t.identifier !== aimId) continue;
-    const rect = aimStick.getBoundingClientRect();
-    let dx = t.clientX - rect.left - 75, dy = t.clientY - rect.top - 75;
-    const d = Math.hypot(dx, dy);
-    let vx = dx, vy = dy;
-    if (d > aimMax) { vx = dx / d * aimMax; vy = dy / d * aimMax; }
-    aimKnob.style.left = (38 + vx) + 'px'; aimKnob.style.top = (38 + vy) + 'px';
-    if (d > 14) { myAngle = Math.atan2(dy, dx); startAutoFire(); } // mira + dispara
+    const v = joystickVector(aimStick,aimKnob,t.clientX,t.clientY);
+    if (v.d > Math.max(8,v.maxDist*.22)) { myAngle = Math.atan2(v.dy, v.dx); startAutoFire(); }
   }
   e.preventDefault();
-});
-function aimEnd() { aimId = null; aiming = false; aimKnob.style.left = '38px'; aimKnob.style.top = '38px'; stopAutoFire(); }
-aimStick.addEventListener('touchend', aimEnd); aimStick.addEventListener('touchcancel', aimEnd);
+}, { passive:false });
+function aimEnd() { aimId = null; aiming = false; centerJoystick(aimStick,aimKnob); stopAutoFire(); }
+aimStick.addEventListener('touchend', aimEnd, { passive:false }); aimStick.addEventListener('touchcancel', aimEnd, { passive:false });
+window.addEventListener('resize', () => { if (!stickId) centerJoystick(stick,knob); if (!aimId) centerJoystick(aimStick,aimKnob); });
 
 // ---- Desktop ----
 window.addEventListener('keydown', (e) => {
@@ -1084,6 +1119,28 @@ function drawPoopSprite(x, y, scale, rot) {
   ctx.beginPath(); ctx.arc(-5,3,6,0,Math.PI*2); ctx.arc(4,3,7,0,Math.PI*2); ctx.arc(0,-3,6,0,Math.PI*2); ctx.fill(); ctx.stroke();
   ctx.restore();
 }
+function drawFartCloudSprite(x, y, scale, rot) {
+  ctx.save(); ctx.translate(x,y); ctx.rotate(rot||0); ctx.scale(scale,scale);
+  ctx.fillStyle='rgba(139,184,82,.82)'; ctx.strokeStyle='rgba(62,96,37,.9)'; ctx.lineWidth=1.5;
+  const blobs=[[-7,2,7],[0,-3,8],[8,1,7],[1,6,9]];
+  for (const [bx,by,br] of blobs) { ctx.beginPath(); ctx.arc(bx,by,br,0,Math.PI*2); ctx.fill(); ctx.stroke(); }
+  ctx.strokeStyle='rgba(220,239,161,.72)'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.arc(-1,1,6,-1.6,.5); ctx.stroke();
+  ctx.restore();
+}
+function drawLilikaSprite(x, y, scale, rot) {
+  ctx.save(); ctx.translate(x,y); ctx.rotate(rot||0); ctx.scale(scale,scale);
+  const skin='#9b684e', hair='#17131d', dress='#71378d';
+  ctx.strokeStyle=skin; ctx.lineWidth=4; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(-7,7); ctx.lineTo(-15,14); ctx.moveTo(7,7); ctx.lineTo(15,14); ctx.moveTo(-5,20); ctx.lineTo(-8,29); ctx.moveTo(5,20); ctx.lineTo(8,29); ctx.stroke();
+  ctx.fillStyle=dress; ctx.strokeStyle='#3a1d4d'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(-10,5); ctx.lineTo(10,5); ctx.lineTo(13,22); ctx.lineTo(-13,22); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle=skin; ctx.beginPath(); ctx.arc(0,-4,9,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle=hair; ctx.beginPath(); ctx.arc(0,-8,9,Math.PI,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#ff3b52'; ctx.beginPath(); ctx.arc(-3,-4,1.7,0,Math.PI*2); ctx.arc(3,-4,1.7,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#2c1722'; ctx.lineWidth=1.3; ctx.beginPath(); ctx.arc(0,1,3,.2,Math.PI-.2); ctx.stroke();
+  ctx.restore();
+}
+
+function drawFlameSprite(x,y,scale,rot){ctx.save();ctx.translate(x,y);ctx.rotate(rot||0);ctx.scale(scale,scale);ctx.fillStyle='#ff8438';ctx.strokeStyle='#922f0b';ctx.lineWidth=1.7;ctx.beginPath();ctx.moveTo(-8,11);ctx.quadraticCurveTo(-14,-2,0,-18);ctx.quadraticCurveTo(15,-3,8,11);ctx.closePath();ctx.fill();ctx.stroke();ctx.fillStyle='#ffd45c';ctx.beginPath();ctx.moveTo(-4,7);ctx.quadraticCurveTo(-7,-1,0,-10);ctx.quadraticCurveTo(8,0,4,7);ctx.closePath();ctx.fill();ctx.restore()}
 function drawBottleBombSprite(x, y, scale, rot) {
   ctx.save(); ctx.translate(x,y); ctx.rotate(rot||0); ctx.scale(scale,scale);
   ctx.fillStyle='#c98737'; ctx.strokeStyle='#5a3218'; ctx.lineWidth=2;
@@ -1106,14 +1163,15 @@ function drawArmorVestLocal(p, compact) {
   ctx.restore();
 }
 
-function drawHeldWeapon(key) {
-  if (key === 'grito') {
+function drawHeldWeapon(key){if(key==='dracarys'){drawFlameSprite(20,0,.72,0)}else if (key === 'grito') {
     ctx.fillStyle = '#77ddff'; ctx.strokeStyle='#176d91'; ctx.lineWidth=1.5;
     ctx.beginPath(); ctx.moveTo(11,-4); ctx.lineTo(25,-8); ctx.lineTo(25,8); ctx.lineTo(11,4); ctx.closePath(); ctx.fill(); ctx.stroke();
     ctx.strokeStyle='#bff3ff'; ctx.beginPath(); ctx.arc(25,0,7,-.7,.7); ctx.stroke();
   } else if (key === 'espada') drawSnakeLeafSprite(21,0,.85,0);
   else if (key === 'coco') drawPoopSprite(20,0,.65,0);
   else if (key === 'escova') drawHairBrushSprite(19,0,.72,0);
+  else if (key === 'peido') drawFartCloudSprite(20,0,.48,0);
+  else if (key === 'lilika') drawLilikaSprite(20,0,.48,0);
   else drawFlipFlopSprite(20,0,.78,0);
 }
 function drawPlayerLabel(sx, sy, p, topY) {
@@ -1152,50 +1210,69 @@ function drawDefaultBean(sx, sy, p, isMe) {
   drawPlayerLabel(sx,sy+bob,p,-38);
 }
 function drawPregnantCharacter(sx, sy, p, isMe) {
-  const bob = p.moving ? Math.sin(animTime*11+p.id)*2 : 0;
+  const gait = p.moving ? Math.sin(animTime*11+p.id) : 0;
+  const bob = p.moving ? Math.abs(Math.sin(animTime*11+p.id))*2.2 : 0;
+  const lean = p.moving ? gait*.035 : 0;
   const skin='#70452f', hair='#171314', dress='#b6488c';
-  ctx.save(); ctx.translate(sx,sy+bob);
-  ctx.fillStyle='rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(0,23,18,6,0,0,Math.PI*2); ctx.fill();
+  ctx.save(); ctx.translate(sx,sy+bob); ctx.rotate(lean);
+  ctx.fillStyle='rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(0,24,18,6,0,0,Math.PI*2); ctx.fill();
+  // passada alternada, mantendo a mesma hitbox do personagem clássico
   ctx.strokeStyle=skin; ctx.lineWidth=6; ctx.lineCap='round';
-  ctx.beginPath(); ctx.moveTo(-7,13); ctx.lineTo(-8,24); ctx.moveTo(7,13); ctx.lineTo(8,24); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-7,13); ctx.lineTo(-9-gait*3,24); ctx.moveTo(7,13); ctx.lineTo(9+gait*3,24); ctx.stroke();
   ctx.fillStyle=dress; ctx.strokeStyle='#702c58'; ctx.lineWidth=2.2; roundRect(-14,-10,28,29,12); ctx.fill(); ctx.stroke();
-  // barriga bem visível sem caricaturar o rosto ou a pele.
   ctx.fillStyle='#c95da0'; ctx.strokeStyle='#702c58'; ctx.beginPath(); ctx.ellipse(5,7,13,12,-.08,0,Math.PI*2); ctx.fill(); ctx.stroke();
   drawArmorVestLocal(p,true);
   ctx.fillStyle=skin; ctx.beginPath(); ctx.arc(0,-19,10,0,Math.PI*2); ctx.fill();
-  ctx.fillStyle=hair;
-  ctx.beginPath(); ctx.arc(0,-24,10,Math.PI,Math.PI*2); ctx.fill();
+  ctx.fillStyle=hair; ctx.beginPath(); ctx.arc(0,-24,10,Math.PI,Math.PI*2); ctx.fill();
   for (const [hx,hy,hr] of [[-8,-25,4],[8,-25,4],[-5,-30,4],[4,-30,4]]) { ctx.beginPath(); ctx.arc(hx,hy,hr,0,Math.PI*2); ctx.fill(); }
   const ex=Math.cos(p.angle)*2.5, ey=Math.sin(p.angle)*1.5;
   ctx.fillStyle='#181818'; ctx.beginPath(); ctx.arc(-3+ex,-19+ey,1.1,0,Math.PI*2); ctx.arc(3+ex,-19+ey,1.1,0,Math.PI*2); ctx.fill();
   ctx.strokeStyle='#3d2018'; ctx.lineWidth=1.2; ctx.beginPath(); ctx.arc(0,-16,3,.2,Math.PI-.2); ctx.stroke();
-  ctx.save(); ctx.rotate(p.angle); drawHeldWeapon(p.weapon); ctx.restore();
+  // braço/arma acompanha a passada para não parecer um sprite estático deslizando
+  ctx.save(); ctx.rotate(p.angle + (p.moving ? gait*.04 : 0)); drawHeldWeapon(p.weapon); ctx.restore();
+  if (p.moving) {
+    ctx.strokeStyle='rgba(255,255,255,.14)'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(-20-gait*2,17); ctx.lineTo(-28-gait*4,20); ctx.stroke();
+  }
   if (isMe) { ctx.strokeStyle='#ffd23b'; ctx.lineWidth=2; ctx.setLineDash([4,4]); ctx.beginPath(); ctx.arc(0,0,29,0,Math.PI*2); ctx.stroke(); ctx.setLineDash([]); }
   ctx.restore();
   drawPlayerLabel(sx,sy+bob,p,-45);
 }
+function drawBubuCharacter(sx,sy,p,isMe){const gait=p.moving?Math.sin(animTime*11.5+p.id):0,bob=p.moving?Math.abs(Math.sin(animTime*11.5+p.id))*2.2:0,skin='#f0d4c1',hair='#6b3b25',dress='#d65355';ctx.save();ctx.translate(sx,sy+bob);ctx.rotate(p.moving?gait*.03:0);ctx.fillStyle='rgba(0,0,0,.3)';ctx.beginPath();ctx.ellipse(0,24,18,6,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle=skin;ctx.lineWidth=6;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(-7,13);ctx.lineTo(-9-gait*3,24);ctx.moveTo(7,13);ctx.lineTo(9+gait*3,24);ctx.stroke();ctx.fillStyle=dress;ctx.strokeStyle='#842c31';ctx.lineWidth=2.2;roundRect(-14,-10,28,29,12);ctx.fill();ctx.stroke();ctx.fillStyle='#ef8e80';ctx.beginPath();ctx.ellipse(5,7,13,12,-.08,0,Math.PI*2);ctx.fill();ctx.stroke();drawArmorVestLocal(p,true);ctx.fillStyle=skin;ctx.beginPath();ctx.arc(0,-19,10,0,Math.PI*2);ctx.fill();ctx.fillStyle=hair;ctx.beginPath();ctx.arc(0,-24,10,Math.PI,Math.PI*2);ctx.fill();ctx.fillRect(-10,-23,20,6);const ex=Math.cos(p.angle)*2.5,ey=Math.sin(p.angle)*1.5;ctx.fillStyle='#181818';ctx.beginPath();ctx.arc(-3+ex,-19+ey,1.1,0,Math.PI*2);ctx.arc(3+ex,-19+ey,1.1,0,Math.PI*2);ctx.fill();ctx.save();ctx.rotate(p.angle+(p.moving?gait*.04:0));drawHeldWeapon(p.weapon);ctx.restore();if(p.weapon==='dracarys'){ctx.fillStyle='rgba(255,132,56,.16)';ctx.beginPath();ctx.arc(19,0,11,0,Math.PI*2);ctx.fill()}if(isMe){ctx.strokeStyle='#ffd23b';ctx.lineWidth=2;ctx.setLineDash([4,4]);ctx.beginPath();ctx.arc(0,0,29,0,Math.PI*2);ctx.stroke();ctx.setLineDash([])}ctx.restore();drawPlayerLabel(sx,sy+bob,p,-45)}
 function drawCapybaraCharacter(sx, sy, p, isMe) {
-  const bob = p.moving ? Math.sin(animTime*12+p.id)*2 : 0;
+  const gait = p.moving ? Math.sin(animTime*13+p.id) : 0;
+  const bob = p.moving ? Math.abs(Math.sin(animTime*13+p.id))*2 : 0;
   ctx.save(); ctx.translate(sx,sy+bob);
-  ctx.fillStyle='rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(0,17,22,7,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(0,18,23,7,0,0,Math.PI*2); ctx.fill();
   ctx.save(); ctx.rotate(p.angle);
+  // patas primeiro: alternam em pares, dando corrida própria à capivara
+  ctx.strokeStyle='#5d3822'; ctx.lineWidth=5; ctx.lineCap='round';
+  ctx.beginPath();
+  ctx.moveTo(-13,8); ctx.lineTo(-15-gait*4,19);
+  ctx.moveTo(-3,10); ctx.lineTo(-1+gait*4,20);
+  ctx.moveTo(7,9); ctx.lineTo(5+gait*4,20);
+  ctx.moveTo(14,7); ctx.lineTo(16-gait*4,18);
+  ctx.stroke();
   ctx.fillStyle='#9a6740'; ctx.strokeStyle='#5d3822'; ctx.lineWidth=2.3;
   ctx.beginPath(); ctx.ellipse(-2,0,22,14,0,0,Math.PI*2); ctx.fill(); ctx.stroke();
   ctx.fillStyle='#aa754c'; ctx.beginPath(); ctx.ellipse(15,-2,13,11,0,0,Math.PI*2); ctx.fill(); ctx.stroke();
   ctx.fillStyle='#805234'; ctx.beginPath(); ctx.arc(10,-12,4,0,Math.PI*2); ctx.arc(20,-11,4,0,Math.PI*2); ctx.fill();
   ctx.fillStyle='#15110e'; ctx.beginPath(); ctx.arc(19,-5,1.7,0,Math.PI*2); ctx.fill();
   ctx.fillStyle='#3a2418'; ctx.beginPath(); ctx.ellipse(26,2,4,3,0,0,Math.PI*2); ctx.fill();
-  ctx.strokeStyle='#5d3822'; ctx.lineWidth=5; ctx.lineCap='round';
-  ctx.beginPath(); ctx.moveTo(-13,9); ctx.lineTo(-13,19); ctx.moveTo(4,10); ctx.lineTo(4,20); ctx.stroke();
   drawArmorVestLocal(p,true);
-  drawHeldWeapon(p.weapon);
+  ctx.save(); ctx.translate(0, p.moving ? gait*.7 : 0); drawHeldWeapon(p.weapon); ctx.restore();
+  if (p.moving) {
+    ctx.strokeStyle='rgba(222,190,145,.22)'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(-25,7); ctx.lineTo(-33,10); ctx.moveTo(-24,12); ctx.lineTo(-30,16); ctx.stroke();
+  }
   ctx.restore();
   if (isMe) { ctx.strokeStyle='#ffd23b'; ctx.lineWidth=2; ctx.setLineDash([4,4]); ctx.beginPath(); ctx.arc(0,0,31,0,Math.PI*2); ctx.stroke(); ctx.setLineDash([]); }
   ctx.restore();
   drawPlayerLabel(sx,sy+bob,p,-38);
 }
 function drawBean(sx, sy, p, isMe) {
-  if (p.skin === 'gravida') return drawPregnantCharacter(sx,sy,p,isMe);
+  if(p.skin==='gravida')return drawPregnantCharacter(sx,sy,p,isMe);
+  if(p.skin==='bubu')return drawBubuCharacter(sx,sy,p,isMe);
   if (p.skin === 'capivara') return drawCapybaraCharacter(sx,sy,p,isMe);
   return drawDefaultBean(sx,sy,p,isMe);
 }
@@ -1211,9 +1288,82 @@ function shade(hsl, amt) {
   return `hsl(${m[1]}, ${m[2]}%, ${l}%)`;
 }
 
-const ZOOM = 0.72; // câmera equilibrada: vê o cômodo ao redor sem afastar demais
+function roomKind(label) {
+  const t = String(label || '').toLowerCase();
+  if (t.includes('quintal')) return 'yard';
+  if (t.includes('sala')) return 'living';
+  if (t.includes('cozinha')) return 'kitchen';
+  if (t.includes('banheiro')) return 'bath';
+  if (t.includes('quarto')) return 'bedroom';
+  if (t.includes('garagem')) return 'garage';
+  if (t.includes('lavanderia') || t.includes('varal') || t.includes('área')) return 'laundry';
+  if (t.includes('corredor')) return 'corridor';
+  return 'generic';
+}
+function drawWorldBackdrop(camX,camY){const bg=ctx.createLinearGradient(-camX,-camY,world.w-camX,world.h-camY);bg.addColorStop(0,'rgba(255,255,255,.018)');bg.addColorStop(1,'rgba(0,0,0,.12)');ctx.fillStyle=bg;ctx.fillRect(-camX,-camY,world.w,world.h);ctx.strokeStyle='rgba(255,255,255,.018)';ctx.lineWidth=1;for(let x=0;x<=world.w;x+=128){ctx.beginPath();ctx.moveTo(x-camX,-camY);ctx.lineTo(x-camX,world.h-camY);ctx.stroke()}for(let y=0;y<=world.h;y+=128){ctx.beginPath();ctx.moveTo(-camX,y-camY);ctx.lineTo(world.w-camX,y-camY);ctx.stroke()}ctx.fillStyle='rgba(255,255,255,.025)';ctx.fillRect(-camX,-camY,world.w,30);ctx.fillRect(-camX,world.h-30-camY,world.w,30);ctx.fillRect(-camX,-camY,30,world.h);ctx.fillRect(world.w-30-camX,-camY,30,world.h);for(const [px,py] of [[90,105],[1500,150],[1450,1060],[180,1060],[1320,650]]){const g=ctx.createRadialGradient(px-camX,py-camY,2,px-camX,py-camY,22);g.addColorStop(0,'rgba(70,115,70,.22)');g.addColorStop(1,'rgba(70,115,70,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(px-camX,py-camY,22,0,Math.PI*2);ctx.fill()}ctx.strokeStyle='rgba(255,210,59,.075)';ctx.lineWidth=3;ctx.setLineDash([26,24]);ctx.beginPath();ctx.moveTo(-camX,world.h*.92-camY);ctx.lineTo(world.w-camX,world.h*.92-camY);ctx.stroke();ctx.setLineDash([])}
+function drawRoomFloor(rm, camX, camY) {
+  const x=rm.x-camX, y=rm.y-camY, kind=roomKind(rm.label);
+  ctx.fillStyle=rm.color; ctx.fillRect(x,y,rm.w,rm.h);
+  if (kind==='yard') {
+    ctx.strokeStyle='rgba(90,160,92,.14)'; ctx.lineWidth=2;
+    for (let xx=rm.x+12; xx<rm.x+rm.w; xx+=34) { ctx.beginPath(); ctx.moveTo(xx-camX,y); ctx.lineTo(xx-camX,y+rm.h); ctx.stroke(); }
+    ctx.fillStyle='rgba(185,220,135,.12)';
+    for (let yy=rm.y+28; yy<rm.y+rm.h; yy+=70) for (let xx=rm.x+24; xx<rm.x+rm.w; xx+=82) { ctx.beginPath(); ctx.arc(xx-camX,yy-camY,2.2,0,Math.PI*2); ctx.fill(); }
+  } else if (kind==='living' || kind==='bedroom') {
+    ctx.strokeStyle='rgba(255,220,175,.07)'; ctx.lineWidth=1;
+    for (let yy=rm.y+20; yy<rm.y+rm.h; yy+=26) { ctx.beginPath(); ctx.moveTo(x,yy-camY); ctx.lineTo(x+rm.w,yy-camY); ctx.stroke(); }
+    for (let xx=rm.x+46; xx<rm.x+rm.w; xx+=92) { ctx.beginPath(); ctx.moveTo(xx-camX,y); ctx.lineTo(xx-camX,y+rm.h); ctx.stroke(); }
+  } else {
+    ctx.strokeStyle='rgba(255,255,255,.055)'; ctx.lineWidth=1;
+    const step=(kind==='bath'||kind==='kitchen')?42:54;
+    for (let xx=rm.x; xx<rm.x+rm.w; xx+=step) { ctx.beginPath(); ctx.moveTo(xx-camX,y); ctx.lineTo(xx-camX,y+rm.h); ctx.stroke(); }
+    for (let yy=rm.y; yy<rm.y+rm.h; yy+=step) { ctx.beginPath(); ctx.moveTo(x,yy-camY); ctx.lineTo(x+rm.w,yy-camY); ctx.stroke(); }
+  }
+}
+function drawRoomDecor(rm, camX, camY) {
+  const kind=roomKind(rm.label), x=rm.x-camX, y=rm.y-camY;
+  ctx.save(); ctx.globalAlpha=.42;
+  if (kind==='living') {
+    ctx.fillStyle='#8c5d3d'; roundRect(x+rm.w*.16,y+rm.h*.52,rm.w*.45,32,9); ctx.fill();
+    ctx.fillStyle='#5c3927'; roundRect(x+rm.w*.18,y+rm.h*.46,rm.w*.41,14,7); ctx.fill();
+    ctx.fillStyle='rgba(214,150,88,.28)'; roundRect(x+rm.w*.55,y+rm.h*.63,rm.w*.25,rm.h*.18,10); ctx.fill();
+  } else if (kind==='kitchen') {
+    ctx.fillStyle='#70775e'; roundRect(x+12,y+rm.h-48,rm.w-24,34,8); ctx.fill();
+    ctx.fillStyle='#242a22'; for(let i=0;i<3;i++){ ctx.beginPath();ctx.arc(x+45+i*42,y+rm.h-31,7,0,Math.PI*2);ctx.fill(); }
+    ctx.fillStyle='rgba(220,220,190,.25)'; roundRect(x+rm.w*.62,y+rm.h*.25,rm.w*.25,rm.h*.24,8); ctx.fill();
+  } else if (kind==='bedroom') {
+    ctx.fillStyle='#735f6f'; roundRect(x+rm.w*.55,y+rm.h*.42,rm.w*.34,rm.h*.34,10); ctx.fill();
+    ctx.fillStyle='#c2b7c8'; roundRect(x+rm.w*.58,y+rm.h*.45,rm.w*.28,18,8); ctx.fill();
+    ctx.fillStyle='rgba(220,170,190,.18)'; roundRect(x+rm.w*.14,y+rm.h*.58,rm.w*.26,rm.h*.18,9); ctx.fill();
+  } else if (kind==='bath') {
+    ctx.strokeStyle='#90b9c8'; ctx.lineWidth=4; ctx.beginPath(); ctx.arc(x+rm.w*.76,y+rm.h*.62,28,0,Math.PI*2); ctx.stroke();
+    ctx.fillStyle='#8ca8b3'; roundRect(x+18,y+rm.h*.58,42,28,8); ctx.fill();
+    ctx.fillStyle='#28343a'; ctx.beginPath();ctx.arc(x+rm.w*.76,y+rm.h*.62,5,0,Math.PI*2);ctx.fill();
+  } else if (kind==='yard') {
+    ctx.fillStyle='#315d35'; for (const [px,py,r] of [[.22,.68,22],[.72,.72,18],[.78,.3,16]]) { ctx.beginPath();ctx.arc(x+rm.w*px,y+rm.h*py,r,0,Math.PI*2);ctx.fill(); }
+    ctx.fillStyle='#9a6136'; roundRect(x+rm.w*.42,y+rm.h*.7,54,22,6); ctx.fill();
+    ctx.strokeStyle='#dad0be'; ctx.lineWidth=3; ctx.beginPath();ctx.moveTo(x+rm.w*.42,y+rm.h*.7);ctx.lineTo(x+rm.w*.42-8,y+rm.h*.7+31);ctx.moveTo(x+rm.w*.42+54,y+rm.h*.7);ctx.lineTo(x+rm.w*.42+62,y+rm.h*.7+31);ctx.stroke();
+  } else if (kind==='garage') {
+    ctx.strokeStyle='rgba(255,255,255,.24)'; ctx.lineWidth=5; ctx.setLineDash([18,12]);
+    ctx.strokeRect(x+rm.w*.2,y+rm.h*.35,rm.w*.6,rm.h*.4); ctx.setLineDash([]);
+    ctx.fillStyle='rgba(150,160,175,.18)'; roundRect(x+rm.w*.31,y+rm.h*.45,rm.w*.38,rm.h*.2,12); ctx.fill();
+  } else if (kind==='laundry') {
+    ctx.strokeStyle='#cbd7df'; ctx.lineWidth=2; ctx.beginPath();ctx.moveTo(x+20,y+rm.h*.42);ctx.lineTo(x+rm.w-20,y+rm.h*.42);ctx.stroke();
+    for (let i=0;i<5;i++){ ctx.fillStyle=i%2?'#d46b8b':'#7aa4d0';ctx.fillRect(x+35+i*46,y+rm.h*.42+4,24,28); }
+  } else if (kind==='corridor') {
+    ctx.fillStyle='rgba(255,255,255,.10)'; for(let i=0;i<5;i++){ ctx.beginPath();ctx.ellipse(x+rm.w*.45+(i%2?12:-12),y+80+i*72,6,10,i%2?.25:-.25,0,Math.PI*2);ctx.fill(); }
+  }
+  ctx.restore();
+}
+
+function getGameZoom() {
+  const mobile = W <= 820 || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+  if (!mobile) return 0.72;
+  return H >= W ? 0.82 : 0.74; // portrait é o alvo principal; player/mapa ficam mais legíveis
+}
 function draw() {
   animTime += 1 / 60;
+  const ZOOM = getGameZoom();
 
   // ---- interpola posições (movimento fluido entre updates do servidor) ----
   for (const id in render) {
@@ -1245,23 +1395,19 @@ function draw() {
   ctx.fillStyle = '#0a0a10'; ctx.fillRect(0, 0, W, H);
   ctx.setTransform(DPR * ZOOM, 0, 0, DPR * ZOOM, 0, 0);
 
-  // ---- piso base ----
+  // ---- piso base / rua ----
   ctx.fillStyle = gameMap.floor; ctx.fillRect(-camX, -camY, world.w, world.h);
+  drawWorldBackdrop(camX,camY);
 
-  // ---- cômodos da casa (cor + rótulo) ----
+  // ---- cômodos: piso específico + decoração flat que não interfere na colisão ----
   if (gameMap.rooms) for (const rm of gameMap.rooms) {
-    ctx.fillStyle = rm.color;
-    ctx.fillRect(rm.x - camX, rm.y - camY, rm.w, rm.h);
-    // piso em ladrilho sutil
-    ctx.strokeStyle = 'rgba(0,0,0,.08)'; ctx.lineWidth = 1;
-    for (let lx = rm.x; lx < rm.x + rm.w; lx += 40) { ctx.beginPath(); ctx.moveTo(lx - camX, rm.y - camY); ctx.lineTo(lx - camX, rm.y + rm.h - camY); ctx.stroke(); }
-    for (let ly = rm.y; ly < rm.y + rm.h; ly += 40) { ctx.beginPath(); ctx.moveTo(rm.x - camX, ly - camY); ctx.lineTo(rm.x + rm.w - camX, ly - camY); ctx.stroke(); }
-    // rótulo do cômodo em placa discreta para leitura melhor em desktop e mobile
+    drawRoomFloor(rm,camX,camY);
+    drawRoomDecor(rm,camX,camY);
     const labelX = rm.x + rm.w / 2 - camX, labelY = rm.y + 35 - camY;
-    ctx.font = '800 22px sans-serif'; ctx.textAlign = 'center';
+    ctx.font='850 15px sans-serif'; ctx.textAlign = 'center';
     const labelW = Math.min(rm.w - 24, ctx.measureText(rm.label).width + 28);
-    ctx.fillStyle = 'rgba(8,10,16,.26)'; roundRect(labelX - labelW/2, labelY - 24, labelW, 32, 10); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,.48)';
+    ctx.fillStyle = 'rgba(8,10,16,.34)'; roundRect(labelX - labelW/2, labelY-19,labelW,25,9); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.68)';
     ctx.fillText(rm.label, labelX, labelY);
   }
 
@@ -1309,20 +1455,20 @@ function draw() {
     ctx.moveTo(gx - camX, gy - camY - 9); ctx.lineTo(gx - camX, gy - camY + 9); ctx.stroke();
   }
 
-  // ---- paredes gamificadas (bloco 3D com topo neon) ----
+  // ---- paredes: mais volumosas e legíveis no mobile ----
   for (const wl of gameMap.walls) {
     const x = wl.x - camX, y = wl.y - camY;
-    // sombra projetada
-    ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(x + 6, y + 6, wl.w, wl.h);
-    // corpo
-    ctx.fillStyle = '#3a3a4e'; ctx.fillRect(x, y, wl.w, wl.h);
-    // topo iluminado
-    ctx.fillStyle = '#565673'; ctx.fillRect(x, y, wl.w, 8);
-    // linha neon na borda superior
-    ctx.strokeStyle = 'rgba(120,180,255,.5)'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + wl.w, y); ctx.stroke();
-    // contorno
-    ctx.strokeStyle = '#22222e'; ctx.lineWidth = 2; ctx.strokeRect(x, y, wl.w, wl.h);
+    ctx.fillStyle = 'rgba(0,0,0,.42)'; ctx.fillRect(x + 7, y + 7, wl.w, wl.h);
+    const vertical = wl.h > wl.w;
+    const grad = vertical ? ctx.createLinearGradient(x,y,x+wl.w,y) : ctx.createLinearGradient(x,y,x,y+wl.h);
+    grad.addColorStop(0,'#62657b'); grad.addColorStop(.35,'#45485d'); grad.addColorStop(1,'#292c3b');
+    ctx.fillStyle = grad; ctx.fillRect(x, y, wl.w, wl.h);
+    ctx.fillStyle='rgba(255,255,255,.16)';
+    if (vertical) ctx.fillRect(x,y,5,wl.h); else ctx.fillRect(x,y,wl.w,5);
+    ctx.strokeStyle = 'rgba(127,224,255,.42)'; ctx.lineWidth = 1.6;
+    if (vertical) { ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y+wl.h);ctx.stroke(); }
+    else { ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+wl.w,y);ctx.stroke(); }
+    ctx.strokeStyle = '#1d2030'; ctx.lineWidth = 2; ctx.strokeRect(x, y, wl.w, wl.h);
   }
 
   // borda do mundo
@@ -1334,7 +1480,7 @@ function draw() {
     if (m2.life <= 0) { muzzles.splice(i, 1); continue; }
     const fx = m2.x + Math.cos(m2.angle) * 28 - camX, fy = m2.y + Math.sin(m2.angle) * 28 - camY;
     ctx.save(); ctx.translate(fx,fy); ctx.rotate(m2.angle);
-    if (m2.weapon === 'grito') {
+    if(m2.weapon==='dracarys'){ctx.fillStyle=`rgba(255,132,56,${m2.life*.82})`;ctx.beginPath();ctx.ellipse(10,0,17,8,0,0,Math.PI*2);ctx.fill();ctx.fillStyle=`rgba(255,212,92,${m2.life*.88})`;ctx.beginPath();ctx.ellipse(17,0,9,4,0,0,Math.PI*2);ctx.fill()}else if (m2.weapon === 'grito') {
       ctx.strokeStyle = `rgba(127,224,255,${m2.life})`; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.arc(0,0,10,-.65,.65); ctx.stroke();
       ctx.beginPath(); ctx.arc(0,0,17,-.65,.65); ctx.stroke();
@@ -1346,6 +1492,13 @@ function draw() {
     } else if (m2.weapon === 'escova') {
       ctx.strokeStyle = `rgba(255,79,163,${m2.life})`; ctx.lineWidth=5;
       ctx.beginPath(); ctx.moveTo(-5,0); ctx.lineTo(14,0); ctx.stroke();
+    } else if (m2.weapon === 'peido') {
+      ctx.fillStyle = `rgba(143,188,88,${m2.life*.55})`; ctx.beginPath(); ctx.arc(7,0,13,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(18,3,8,0,Math.PI*2); ctx.fill();
+    } else if (m2.weapon === 'lilika') {
+      ctx.strokeStyle = `rgba(200,92,255,${m2.life})`; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(7,0,13,0,Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-7,-7); ctx.lineTo(18,7); ctx.moveTo(-7,7); ctx.lineTo(18,-7); ctx.stroke();
     } else {
       ctx.fillStyle = `rgba(255,220,140,${m2.life})`; ctx.beginPath(); ctx.arc(0,0,8*m2.life+2,0,Math.PI*2); ctx.fill();
     }
@@ -1356,7 +1509,7 @@ function draw() {
   for (const b of state.bullets) {
     const bx = b.x - camX, by = b.y - camY, a = b.a || 0, wpn = b.w || 'chinelo';
     ctx.save(); ctx.translate(bx, by); ctx.rotate(a);
-    if (wpn === 'grito' || b.wave) {
+    if(wpn==='dracarys'||b.fire){const pr=b.progress||0;ctx.strokeStyle=`rgba(255,110,35,${.32*(1-pr)})`;ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-18,0);ctx.lineTo(-3,0);ctx.stroke();ctx.rotate(animTime*6+(b.x+b.y)*.01);drawFlameSprite(0,0,.72+(1-pr)*.16,0)}else if (wpn === 'grito' || b.wave) {
       // Onda sonora sem "bolinha": leque crescente, atravessa paredes e jogadores.
       const pr = b.progress || 0;
       const pulse = Math.sin(animTime * 15 + pr * 10) * 2;
@@ -1370,6 +1523,16 @@ function draw() {
       ctx.fillStyle = `rgba(210,248,255,${.8-pr*.35})`;
       ctx.font = '900 9px sans-serif'; ctx.textAlign='left'; ctx.textBaseline='middle';
       ctx.fillText('VADO!', 8, -1);
+    } else if (wpn === 'peido' || b.gas) {
+      const pr=b.progress||0;
+      ctx.rotate(-a);
+      drawFartCloudSprite(0,0,.72 + pr*.2,animTime*.8);
+      ctx.fillStyle=`rgba(202,226,143,${.25*(1-pr)})`; ctx.beginPath();ctx.arc(-10,2,15,0,Math.PI*2);ctx.fill();
+    } else if (wpn === 'lilika' || b.possessed) {
+      // personagem cartunesca girando; sem gore e com trilha roxa própria
+      ctx.strokeStyle='rgba(200,92,255,.28)'; ctx.lineWidth=4; ctx.beginPath();ctx.moveTo(-30,0);ctx.lineTo(-13,0);ctx.stroke();
+      ctx.rotate(animTime*14 + (b.x+b.y)*.015);
+      drawLilikaSprite(0,0,.72,0);
     } else if (wpn === 'espada') {
       // Espada-de-São-Jorge: folha real, não espada metálica.
       drawSnakeLeafSprite(0,0,.95,0);
@@ -1387,6 +1550,20 @@ function draw() {
       ctx.rotate(animTime * 16 + (b.x+b.y)*.01);
       drawFlipFlopSprite(0,0,.82,0);
     }
+    ctx.restore();
+  }
+
+  // ---- CHURRASCO DA MAMÃE MÁRCIA: pickup de vida ----
+  for (const hp of (state.pickups || [])) {
+    const px=hp.x-camX, py=hp.y-camY;
+    const bob=Math.sin(animTime*3 + hp.id)*4;
+    ctx.save();ctx.translate(px,py+bob);
+    const glow=ctx.createRadialGradient(0,0,3,0,0,30);glow.addColorStop(0,'rgba(80,255,120,.28)');glow.addColorStop(1,'rgba(80,255,120,0)');ctx.fillStyle=glow;ctx.beginPath();ctx.arc(0,0,30,0,Math.PI*2);ctx.fill();
+    // grelha/churrasco: espeto + carne + brasa
+    ctx.strokeStyle='#d8c7a8';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-20,9);ctx.lineTo(20,-9);ctx.stroke();
+    for (const [ox,oy,c] of [[-11,5,'#8d3f2a'],[-2,1,'#b95432'],[8,-4,'#7e3525']]) { ctx.fillStyle=c;roundRect(ox-6,oy-5,12,10,4);ctx.fill();ctx.strokeStyle='#4e241b';ctx.lineWidth=1;ctx.stroke(); }
+    ctx.fillStyle='rgba(255,100,45,.75)';ctx.beginPath();ctx.arc(-8,15,3,0,Math.PI*2);ctx.arc(1,16,2.5,0,Math.PI*2);ctx.arc(10,14,3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#caffb8';ctx.font='900 9px sans-serif';ctx.textAlign='center';ctx.fillText(`+${hp.heal||35} HP`,0,-18);
     ctx.restore();
   }
 
@@ -1447,28 +1624,16 @@ function draw() {
     else if (pt.type === 'armor') ctx.fillStyle = `rgba(145,199,255,${pt.life})`;
     else if (pt.type === 'fire') ctx.fillStyle = `rgba(255,${110 + Math.floor(100*pt.life)},40,${pt.life})`;
     else if (pt.type === 'smoke') ctx.fillStyle = `rgba(70,66,64,${pt.life*.7})`;
+    else if (pt.type === 'heal') ctx.fillStyle = `rgba(100,255,135,${pt.life})`;
     else ctx.fillStyle = `rgba(255,220,120,${pt.life})`;
     ctx.beginPath(); ctx.arc(pt.x - camX, pt.y - camY, pt.r * Math.max(.25,pt.life), 0, Math.PI * 2); ctx.fill();
   }
 
+  if(particles.length>260)particles.splice(0,particles.length-260);
   // reset da transform para o HUD (já é DOM, mas garante estado limpo)
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 
-  const sorted = [...state.players].sort((a, b) => b.kills - a.kills).slice(0, 5);
-  document.getElementById('scoreboard').innerHTML = sorted.length
-    ? `<span class="hudDim">TOP DA TELA</span><br>` + sorted.map(p => `${p.id === myId ? '▶ ' : ''}${escapeHtml(p.name)}${p.spectating ? ' 👁️' : ''}: ${p.kills}💀`).join('<br>')
-    : 'Placar';
-
-  let timerStr = '';
-  if (state.timeLeft != null && state.phase === 'playing') {
-    const mm = Math.floor(state.timeLeft / 60), ss = state.timeLeft % 60;
-    timerStr = `${mm}:${ss.toString().padStart(2,'0')}`;
-  }
-  if (me) {
-    document.getElementById('status').innerHTML = me.spectating
-      ? `<b>👁 EXPECTADOR</b><br><span class="hudDim">rodada ${state.round || ''}</span><br>☠️ ${me.kills} • 💰 ${me.points}`
-      : `❤️ ${Math.max(0, me.hp)}/${me.maxHp || 100}${me.armor > 0 ? ` • 🛡️ ${me.armor}` : ''}<br>☠️ ${me.kills} • 💰 <b>${me.points}</b> • 🍾 ${me.bombs || 0}<br><span class="hudDim">R${state.round || 1}${timerStr ? ' • ⏱ '+timerStr : ''}</span>`;
-  } else document.getElementById('status').textContent = 'Conectando...';
+  const mobileHud=W<=820||(window.matchMedia&&window.matchMedia('(pointer: coarse)').matches),sorted=[...state.players].sort((a,b)=>b.kills-a.kills).slice(0,mobileHud?3:5);document.getElementById('scoreboard').innerHTML=sorted.length?`<span class="hudTitle">TOP ${mobileHud?3:5}</span>`+sorted.map((p,i)=>`<div class="scoreLine${p.id===myId?' me':''}"><span class="rank">${i+1}</span><span class="name">${p.id===myId?'▶ ':''}${escapeHtml(p.name)}${p.spectating?' 👁':''}</span><span>${p.kills}💀</span></div>`).join(''):'Placar';let timerStr='';if(state.timeLeft!=null&&state.phase==='playing'){const mm=Math.floor(state.timeLeft/60),ss=state.timeLeft%60;timerStr=`${mm}:${ss.toString().padStart(2,'0')}`}if(me){const weaponName=(weapons[me.weapon]&&weapons[me.weapon].name)||'Arma';document.getElementById('status').innerHTML=me.spectating?`<span class="hudTitle">EXPECTADOR</span><div class="hudPills"><span class="hudPill">👁 Fora da rodada</span><span class="hudPill money">💰 ${me.points}</span><span class="hudPill">☠️ ${me.kills}</span></div>`:`<div class="hudPills"><span class="hudPill hp">❤️ ${Math.max(0,me.hp)}/${me.maxHp||100}</span>${me.armor>0?`<span class="hudPill">🛡️ ${me.armor}</span>`:''}<span class="hudPill money">💰 ${me.points}</span><span class="hudPill">🍾 ${me.bombs||0}</span><span class="hudPill weapon">🔫 ${escapeHtml(weaponName)}</span><span class="hudPill">R${state.round||1}${timerStr?' • ⏱ '+timerStr:''}</span></div>`}else document.getElementById('status').textContent='Conectando...';
 
   // respawn normal. Ejetado usa o modo espectador, nunca a tela de morte.
   document.getElementById('dead').style.display = (me && !me.alive && state.phase === 'playing' && !me.spectating) ? 'flex' : 'none';
