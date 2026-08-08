@@ -9,348 +9,127 @@
   html, body { width: 100%; height: 100%; overflow: hidden; background: #0d0d12; font-family: system-ui, sans-serif; }
   #game { display: block; }
 
-  #start { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
-           background: radial-gradient(circle at 50% 35%, #203650 0%, #101b2b 38%, #070b14 72%, #03050a 100%); z-index: 30; overflow: hidden; isolation: isolate; }
-  #start::before { content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: .58;
-    background-image: radial-gradient(circle,rgba(255,255,255,.8) 0 1px,transparent 1.5px), radial-gradient(circle,rgba(159,196,232,.55) 0 1px,transparent 1.4px);
-    background-size: 110px 110px, 155px 155px; background-position: 0 0, 45px 20px; animation: startSnow 13s linear infinite; }
-  #start::after { content:''; position:absolute; inset:-12%; z-index:4; pointer-events:none;
-    background: radial-gradient(ellipse at center,transparent 35%,rgba(2,4,9,.18) 62%,rgba(2,4,9,.78) 100%); }
-  /* montanhas dos Alpes em camadas */
-  #alps { position: absolute; bottom: -2%; left: 0; width: 100%; height: 58%; z-index: 1; opacity: .88; filter: drop-shadow(0 -12px 30px rgba(0,0,0,.25)); }
-  .startContent { position: relative; z-index: 8; width: min(560px,92vw); display:flex; flex-direction:column; align-items:center; gap:4px; padding:24px 18px; text-align:center; }
-  .startModePill { color:#dcecff; border:1px solid rgba(127,224,255,.28); background:rgba(5,11,20,.58); padding:6px 12px; border-radius:999px; font-size:10px; font-weight:900; letter-spacing:2.3px; box-shadow:0 8px 24px rgba(0,0,0,.2); backdrop-filter:blur(8px); margin-bottom:5px; }
-  #start .presents { color: #9fc4e8; font-size: 14px; letter-spacing: 1px; margin-bottom: 1px; text-shadow: 0 2px 6px #000; }
-  #start .brand { color: #ffd23b; font-size: 19px; font-weight: 900; letter-spacing: 1px; text-shadow: 0 2px 8px #000; margin-bottom: 8px; }
-  #start h1 { color: #ff3b52; font-size: clamp(52px,9vw,86px); letter-spacing: 4px; font-weight: 1000;
-              text-shadow: 0 0 34px rgba(255,59,82,.62), 5px 5px 0 #000; line-height: .88; text-align: center; animation:titlePulse 2.2s ease-in-out infinite; }
-  #start .edition { color: #d8efff; font-size: clamp(16px,3vw,24px); font-weight: 900; letter-spacing: clamp(4px,1vw,8px); text-shadow: 0 2px 8px #000; margin-top: 5px; }
-  #start .snow { color: #8fb8dc; font-size: 12px; margin-top: 7px; letter-spacing:.5px; }
-  .startLoadout { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:7px; margin-top:10px; max-width:500px; }
-  .startChip { display:flex; align-items:center; gap:5px; color:#dce8f4; background:rgba(6,10,18,.66); border:1px solid rgba(255,255,255,.09); border-radius:999px; padding:5px 9px; font-size:9px; font-weight:850; box-shadow:0 4px 14px rgba(0,0,0,.18); backdrop-filter:blur(7px); }
-  .startChip .miniStartIcon { width:20px; height:20px; display:inline-flex; align-items:center; justify-content:center; }
-  .startChip .miniStartIcon svg { width:100%; height:100%; display:block; }
-  #start input { margin-top: 18px; padding: 14px 17px; font-size: 16px; border-radius: 12px; border: 1px solid rgba(127,224,255,.35); background: rgba(7,13,22,.82); color: #fff; width: min(270px,78vw); text-align: center; outline:none; box-shadow:0 10px 30px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.04); backdrop-filter:blur(9px); }
-  #start input:focus { border-color:#7fe0ff; box-shadow:0 0 0 3px rgba(127,224,255,.1),0 10px 30px rgba(0,0,0,.25); }
-  #start button { position:relative; overflow:hidden; margin-top: 10px; padding: 15px 52px; font-size: 21px; border: 1px solid rgba(255,255,255,.3); border-radius: 13px; background: linear-gradient(180deg,#ff5669,#ef263f); color: #fff; font-weight: 950; letter-spacing: 2px; box-shadow: 0 5px 0 #a01828,0 12px 30px rgba(255,59,82,.24); }
-  #start button::after { content:''; position:absolute; top:-40%; left:-45%; width:28%; height:180%; transform:rotate(24deg); background:linear-gradient(90deg,transparent,rgba(255,255,255,.48),transparent); animation:buttonShine 2.7s ease-in-out infinite; }
+  #start { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+           background: linear-gradient(180deg, #1a2a3a 0%, #0d1520 55%, #050810 100%); z-index: 30; gap: 4px; overflow: hidden; }
+  /* montanhas dos alpes em camadas */
+  #alps { position: absolute; bottom: 0; left: 0; width: 100%; height: 55%; z-index: 0; }
+  #start .presents { color: #9fc4e8; font-size: 15px; letter-spacing: 1px; z-index: 2; margin-bottom: 2px; text-shadow: 0 2px 6px #000; }
+  #start .brand { color: #ffd23b; font-size: 22px; font-weight: 800; letter-spacing: 1px; z-index: 2; text-shadow: 0 2px 8px #000; margin-bottom: 14px; }
+  #start h1 { color: #ff3b52; font-size: 52px; letter-spacing: 3px; font-weight: 900; z-index: 2;
+              text-shadow: 0 0 24px rgba(255,59,82,.7), 4px 4px 0 #000; line-height: .95; text-align: center; }
+  #start .edition { color: #bfe6ff; font-size: 20px; font-weight: 800; letter-spacing: 6px; z-index: 2; text-shadow: 0 2px 8px #000; margin-top: 2px; }
+  #start .snow { color: #7fb0dd; font-size: 12px; z-index: 2; margin-top: 6px; }
+  #start input { margin-top: 22px; padding: 13px 16px; font-size: 16px; border-radius: 10px; border: 2px solid #2a4a66; background: rgba(10,20,32,.85); color: #fff; width: 240px; text-align: center; z-index: 2; }
+  #start button { margin-top: 12px; padding: 16px 52px; font-size: 22px; border: none; border-radius: 12px; background: #ff3b52; color: #fff; font-weight: 900; letter-spacing: 2px; box-shadow: 0 5px 0 #a01828; z-index: 2; }
   #start button:active { transform: translateY(5px); box-shadow: 0 0 0 #a01828; }
-  #start .lvlnote { color: #9fc4e8; font-size: 12px; margin-top: 10px; min-height:15px; }
-  #start .connStatus { color: #ffd23b; font-size: 14px; margin-top: 12px; min-height: 20px; font-weight: bold; display: flex; align-items: center; gap: 8px; justify-content: center; }
-  #start .connStatus.err { color: #ff6b6b; }
-  #start .connStatus .spin { width: 16px; height: 16px; border: 3px solid rgba(255,210,59,.3); border-top-color: #ffd23b; border-radius: 50%; animation: spin 0.7s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  #start.connecting #playBtn { opacity: .5; pointer-events: none; }
+  #start .lvlnote { color: #9fc4e8; font-size: 12px; z-index: 2; margin-top: 14px; }
 
-  /* batalha animada da capa */
-  #startBattle { position:absolute; inset:0; z-index:3; pointer-events:none; overflow:hidden; }
-  .battleSpeedLines { position:absolute; inset:0; opacity:.16; background:repeating-linear-gradient(168deg,transparent 0 42px,rgba(127,224,255,.24) 43px 44px,transparent 45px 92px); animation:speedScroll 7s linear infinite; }
-  .battleLane { position:absolute; left:-24vw; width:148vw; height:110px; }
-  .laneOne { top:17%; transform:rotate(-5deg); }
-  .laneTwo { top:58%; transform:rotate(4deg); }
-  .laneThree { top:76%; transform:rotate(-2deg); }
-  .battleRunner { position:absolute; width:96px; height:82px; filter:drop-shadow(0 10px 8px rgba(0,0,0,.35)); will-change:transform; }
-  .battleRunner.toRight { left:-120px; animation:runnerRight 8.3s linear infinite; }
-  .battleRunner.toLeft { right:-120px; animation:runnerLeft 9.1s linear infinite; }
-  .runnerPregnant { animation-delay:-2.6s !important; }
-  .runnerCapy { animation-delay:-5.2s !important; }
-  .battleSkin { position:absolute; left:10px; top:4px; width:64px; height:64px; animation:runnerBob .28s ease-in-out infinite alternate; }
-  .battleSkin svg { width:100%; height:100%; display:block; overflow:visible; }
-  .battleWeapon { position:absolute; right:0; top:25px; width:38px; height:38px; transform-origin:left center; animation:weaponKick .7s ease-in-out infinite; }
-  .battleWeapon svg { width:100%; height:100%; display:block; }
-  .runnerPregnant .battleWeapon { transform:rotate(-8deg); }
-  .runnerCapy .battleWeapon { top:20px; right:-4px; }
-  .muzzlePulse { position:absolute; right:-9px; top:35px; width:12px; height:12px; border-radius:50%; background:#ffe979; box-shadow:0 0 18px #ffd23b; animation:muzzleBlink .55s steps(1,end) infinite; }
-  .soundWave { position:absolute; right:-20px; top:20px; width:54px; height:54px; border:3px solid rgba(127,224,255,.78); border-left-color:transparent; border-bottom-color:transparent; border-radius:50%; transform:rotate(45deg); opacity:0; animation:waveBurst 1s ease-out infinite; }
-  .soundWave.w2 { animation-delay:.28s; }
-  .flyingShot { position:absolute; width:44px; height:44px; opacity:.9; filter:drop-shadow(0 4px 4px rgba(0,0,0,.3)); }
-  .flyingShot svg { width:100%; height:100%; display:block; }
-  .brushShot { top:63%; left:-80px; animation:shotRight 4.2s linear infinite; }
-  .leafShot { top:79%; right:-80px; animation:shotLeft 4.6s linear infinite; animation-delay:-1.8s; }
-  .bombArc { position:absolute; top:25%; left:4%; width:46px; height:46px; animation:bombFly 4.8s cubic-bezier(.24,.72,.35,1) infinite; filter:drop-shadow(0 5px 5px rgba(0,0,0,.32)); }
-  .bombArc svg { width:100%; height:100%; display:block; }
-  .coverExplosion { position:absolute; left:72%; top:38%; width:24px; height:24px; border-radius:50%; opacity:0; background:#fff4a2; box-shadow:0 0 0 0 rgba(255,210,59,.6),0 0 30px rgba(255,77,52,.85); animation:coverBoom 4.8s ease-out infinite; }
-  .pickupVest { position:absolute; left:7%; bottom:14%; width:92px; padding:7px; border-radius:14px; background:rgba(8,13,22,.6); border:1px solid rgba(127,224,255,.18); text-align:center; color:#bfe6ff; font-size:8px; font-weight:900; letter-spacing:.5px; animation:pickupFloat 2.1s ease-in-out infinite; }
-  .pickupVest .startUtilityIcon { display:block; width:48px; height:48px; margin:auto; }
-  .pickupVest svg { width:100%; height:100%; display:block; }
-  .battleTag { position:absolute; color:#fff; font-size:8px; font-weight:950; text-shadow:0 2px 3px #000; background:rgba(4,8,14,.52); border:1px solid rgba(255,255,255,.08); padding:2px 5px; border-radius:999px; white-space:nowrap; }
-  .battleRunner .battleTag { left:5px; top:-10px; }
+  #hud { position: fixed; top: 12px; left: 12px; right: 12px; display: flex; justify-content: space-between; color: #fff; font-size: 13px; z-index: 10; pointer-events: none; }
+  #scoreboard, #status { background: rgba(0,0,0,.55); padding: 10px 14px; border-radius: 10px; line-height: 1.6; border: 1px solid #333; }
+  #status { text-align: right; margin-right: 96px; } /* espaço p/ os botões da direita */
+  #status b { color: #ffd23b; }
+  #levelBadge { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 10; background: linear-gradient(180deg,#ffd23b,#e8a800); color: #201500; font-weight: 900; padding: 8px 16px; border-radius: 12px; font-size: 14px; box-shadow: 0 3px 0 #a87700; text-align: center; }
+  #levelBadge small { display: block; font-size: 10px; font-weight: 700; opacity: .8; }
+  #xpBar { width: 120px; height: 5px; background: rgba(0,0,0,.4); border-radius: 3px; margin-top: 4px; overflow: hidden; }
+  #xpFill { height: 100%; width: 0%; background: #fff; }
 
-  @keyframes startSnow { from { background-position:0 0,45px 20px; } to { background-position:0 240px,45px 340px; } }
-  @keyframes titlePulse { 0%,100% { transform:scale(1); filter:brightness(1); } 50% { transform:scale(1.025); filter:brightness(1.1); } }
-  @keyframes buttonShine { 0%,55% { left:-45%; } 78%,100% { left:125%; } }
-  @keyframes speedScroll { from { transform:translateX(0); } to { transform:translateX(180px); } }
-  @keyframes runnerRight { from { transform:translateX(0) rotate(1deg); } to { transform:translateX(160vw) rotate(1deg); } }
-  @keyframes runnerLeft { from { transform:translateX(0) scaleX(-1); } to { transform:translateX(-160vw) scaleX(-1); } }
-  @keyframes runnerBob { from { transform:translateY(1px) rotate(-2deg); } to { transform:translateY(-5px) rotate(2deg); } }
-  @keyframes weaponKick { 0%,70%,100% { translate:0 0; } 76% { translate:-5px 1px; } 82% { translate:1px 0; } }
-  @keyframes muzzleBlink { 0%,70%,100% { opacity:0; transform:scale(.45); } 74% { opacity:1; transform:scale(1.5); } }
-  @keyframes waveBurst { 0% { opacity:.9; transform:rotate(45deg) scale(.25); } 100% { opacity:0; transform:rotate(45deg) scale(1.45); } }
-  @keyframes shotRight { from { transform:translateX(0) rotate(0); } to { transform:translateX(116vw) rotate(900deg); } }
-  @keyframes shotLeft { from { transform:translateX(0) rotate(0); } to { transform:translateX(-116vw) rotate(-720deg); } }
-  @keyframes bombFly { 0% { transform:translate(0,0) rotate(0); opacity:0; } 8% { opacity:1; } 48% { transform:translate(42vw,-16vh) rotate(420deg); } 72% { transform:translate(67vw,12vh) rotate(740deg); opacity:1; } 76%,100% { transform:translate(69vw,13vh) rotate(760deg); opacity:0; } }
-  @keyframes coverBoom { 0%,73% { opacity:0; transform:scale(.2); box-shadow:0 0 0 0 rgba(255,210,59,.55),0 0 0 rgba(255,77,52,.6); } 76% { opacity:1; transform:scale(1); box-shadow:0 0 0 8px rgba(255,210,59,.45),0 0 50px 12px rgba(255,77,52,.78); } 88% { opacity:.28; transform:scale(3.5); box-shadow:0 0 0 34px rgba(255,210,59,0),0 0 70px 25px rgba(255,77,52,0); } 100% { opacity:0; } }
-  @keyframes pickupFloat { 0%,100% { transform:translateY(0) rotate(-2deg); } 50% { transform:translateY(-12px) rotate(2deg); } }
+  #stick { position: fixed; bottom: 34px; left: 34px; width: 130px; height: 130px; z-index: 10; }
+  #stickBase { position: absolute; inset: 0; border-radius: 50%; background: rgba(255,255,255,.08); border: 2px solid rgba(255,255,255,.15); }
+  #stickKnob { position: absolute; width: 58px; height: 58px; left: 36px; top: 36px; border-radius: 50%; background: rgba(255,59,82,.55); border: 2px solid rgba(255,255,255,.4); }
 
-  @media (max-width:820px), (pointer:coarse) {
-    .startContent { width:94vw; padding:18px 10px; transform:translateY(-1vh); }
-    #start .presents { font-size:11px; }
-    #start .brand { font-size:14px; margin-bottom:5px; }
-    #start h1 { font-size:clamp(48px,15vw,68px); }
-    #start .edition { font-size:15px; letter-spacing:4px; }
-    #start .snow { font-size:10px; }
-    .startLoadout { max-width:92vw; gap:5px; margin-top:8px; }
-    .startChip { font-size:8px; padding:4px 7px; }
-    .startChip .miniStartIcon { width:17px; height:17px; }
-    #start input { margin-top:13px; padding:12px 14px; font-size:15px; }
-    #start button { padding:13px 44px; font-size:19px; }
-    #alps { height:48%; opacity:.72; }
-    .battleLane { height:80px; }
-    .laneOne { top:12%; }
-    .laneTwo { top:66%; }
-    .laneThree { top:82%; }
-    .battleRunner { transform:scale(.78); }
-    .pickupVest { left:3%; bottom:20%; transform:scale(.78); }
-    .bombArc { top:19%; }
-    .coverExplosion { top:33%; }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    #start::before, #start h1, #start button::after, .battleSpeedLines, .battleRunner, .battleSkin, .battleWeapon, .muzzlePulse, .soundWave, .flyingShot, .bombArc, .coverExplosion, .pickupVest { animation:none !important; }
-    .battleRunner { opacity:.45; }
-  }
-
-  :root {
-    --dz-red: #ff3b52;
-    --dz-yellow: #ffd23b;
-    --dz-cyan: #7fe0ff;
-    --dz-panel: rgba(10, 12, 20, .78);
-    --dz-border: rgba(255,255,255,.13);
-  }
-
-  #hud { position: fixed; top: max(12px, env(safe-area-inset-top)); left: 12px; right: 12px; display: flex; justify-content: space-between; color: #fff; font-size: 13px; z-index: 10; pointer-events: none; }
-  #scoreboard, #status { background: linear-gradient(180deg,rgba(20,22,32,.88),rgba(8,10,16,.78)); padding: 10px 14px; border-radius: 14px; line-height: 1.55; border: 1px solid var(--dz-border); box-shadow: 0 8px 26px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.05); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
-  #scoreboard { min-width: 150px; }
-  #status { min-width: 110px; text-align: right; margin-right: 102px; }
-  #status b { color: var(--dz-yellow); }
-  .hudDim { opacity: .62; font-size: .88em; }
-
-  #levelBadge { position: fixed; top: max(10px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 11; background: linear-gradient(180deg,#ffe36f,#ffc21f 72%,#d89400); color: #241800; font-weight: 950; padding: 8px 17px 9px; border-radius: 15px; font-size: 14px; box-shadow: 0 5px 0 #9c6b00, 0 10px 28px rgba(0,0,0,.28); text-align: center; border: 1px solid rgba(255,255,255,.38); min-width: 132px; }
-  #levelBadge small { display: block; font-size: 10px; font-weight: 800; opacity: .78; }
-  #xpBar { width: 116px; height: 6px; background: rgba(30,20,0,.32); border-radius: 10px; margin-top: 5px; overflow: hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,.35); }
-  #xpFill { height: 100%; width: 0%; background: linear-gradient(90deg,#fff,#fff0a8); border-radius: inherit; transition: width .25s ease; }
-
-  #stick { position: fixed; bottom: max(30px, env(safe-area-inset-bottom)); left: 30px; width: 130px; height: 130px; z-index: 10; transition: opacity .2s; }
-  #stickBase { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle,rgba(255,255,255,.08),rgba(255,255,255,.025)); border: 2px solid rgba(255,255,255,.18); box-shadow: inset 0 0 24px rgba(0,0,0,.24), 0 8px 30px rgba(0,0,0,.18); }
-  #stickKnob { position: absolute; width: 58px; height: 58px; left: 36px; top: 36px; border-radius: 50%; background: radial-gradient(circle at 35% 30%,#d55265,#9f2639); border: 2px solid rgba(255,255,255,.42); box-shadow: 0 5px 14px rgba(0,0,0,.32); }
-
-  #actions { position: fixed; bottom: max(30px, env(safe-area-inset-bottom)); right: 30px; z-index: 10; display: flex; flex-direction: column; gap: 12px; align-items: center; transition: opacity .2s; }
+  #actions { position: fixed; bottom: 34px; right: 34px; z-index: 10; display: flex; flex-direction: column; gap: 12px; align-items: center; }
+  /* joystick de mira estilo Free Fire */
   #aimStick { position: relative; width: 150px; height: 150px; }
-  #aimBase { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle,rgba(255,59,82,.17),rgba(255,59,82,.04)); border: 3px solid rgba(255,59,82,.58); box-shadow: inset 0 0 28px rgba(255,59,82,.08); }
-  #aimKnob { position: absolute; width: 74px; height: 74px; left: 38px; top: 38px; border-radius: 50%; background: linear-gradient(180deg,#ff5065,#df263d); border: 3px solid rgba(255,255,255,.58); box-shadow: 0 5px 0 #991827, 0 9px 22px rgba(0,0,0,.25); display: flex; align-items: center; justify-content: center; overflow: hidden; }
-  #aimKnob .weaponIcon { width: 44px; height: 44px; }
-  #aimHint { position: fixed; bottom: 194px; right: 30px; width: 150px; text-align: center; color: rgba(255,255,255,.52); font-size: 11px; z-index: 10; pointer-events: none; text-shadow: 0 1px 3px #000; }
-  #equippedChip { position: fixed; bottom: 210px; right: 30px; z-index: 11; display: flex; align-items: center; gap: 7px; background: rgba(8,10,18,.8); border: 1.5px solid rgba(255,210,59,.6); border-radius: 12px; padding: 6px 12px 6px 8px; color: #ffd23b; font-weight: 800; font-size: 14px; pointer-events: none; text-shadow: 0 1px 2px #000; box-shadow: 0 4px 14px rgba(0,0,0,.4); }
-  #equippedChip .weaponIcon { width: 22px; height: 22px; display: inline-flex; }
-  #equippedChip .weaponIcon svg { width: 100%; height: 100%; }
-  body.spectating #equippedChip { display: none; }
-
-  #topRight { position: fixed; top: max(12px, env(safe-area-inset-top)); right: 12px; z-index: 12; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
-  .iconbtn { padding: 10px 14px; border-radius: 11px; border: 1px solid rgba(255,255,255,.18); background: linear-gradient(180deg,rgba(26,28,38,.92),rgba(8,10,16,.86)); color: #fff; font-size: 14px; font-weight: 850; box-shadow: 0 5px 16px rgba(0,0,0,.25); backdrop-filter: blur(9px); }
-  .iconbtn:active { transform: scale(.96); }
-
-  #weapons { position: fixed; bottom: 194px; right: 30px; z-index: 10; display: flex; gap: 7px; flex-wrap: wrap; justify-content: flex-end; max-width: 360px; transition: opacity .2s; }
-  .wbtn { min-height: 44px; padding: 7px 11px 7px 8px; border-radius: 12px; border: 1px solid rgba(255,255,255,.12); background: rgba(8,10,16,.78); color: #fff; font-size: 12px; font-weight: 850; display: flex; align-items: center; gap: 7px; box-shadow: 0 5px 16px rgba(0,0,0,.22); backdrop-filter: blur(8px); }
-  .wbtn .weaponIcon { width: 28px; height: 28px; flex: 0 0 28px; }
-  .wbtn.active { border-color: var(--dz-yellow); background: linear-gradient(180deg,rgba(255,210,59,.24),rgba(70,48,0,.62)); color: var(--dz-yellow); box-shadow: 0 0 0 1px rgba(255,210,59,.2),0 5px 18px rgba(0,0,0,.28); }
-  .wbtn.locked { opacity: .34; filter: grayscale(.5); }
-  .weaponIcon { display: inline-flex; align-items: center; justify-content: center; }
-  .weaponIcon svg { width: 100%; height: 100%; display: block; overflow: visible; filter: drop-shadow(0 2px 2px rgba(0,0,0,.35)); }
+  #aimBase { position: absolute; inset: 0; border-radius: 50%; background: rgba(255,59,82,.15); border: 3px solid rgba(255,59,82,.5); }
+  #aimKnob { position: absolute; width: 74px; height: 74px; left: 38px; top: 38px; border-radius: 50%; background: rgba(255,59,82,.9); border: 3px solid rgba(255,255,255,.5); box-shadow: 0 3px 0 #a01828; display: flex; align-items: center; justify-content: center; font-size: 30px; }
+  #aimHint { position: fixed; bottom: 194px; right: 34px; width: 150px; text-align: center; color: rgba(255,255,255,.5); font-size: 11px; z-index: 10; pointer-events: none; }
+  /* tela de votação */
+  #vote { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; background: rgba(8,10,20,.92); z-index: 40; gap: 10px; padding: 20px; }
+  #vote h2 { color: #ffd23b; font-size: 28px; letter-spacing: 2px; text-shadow: 2px 2px 0 #000; }
+  #voteTimer { color: #ff3b52; font-size: 40px; font-weight: 900; }
+  #voteList { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 380px; margin-top: 6px; }
+  .voteRow { display: flex; align-items: center; justify-content: space-between; background: #1a1a26; border: 2px solid #333; border-radius: 12px; padding: 12px 16px; color: #fff; }
+  .voteRow.voted { border-color: #ff3b52; background: rgba(255,59,82,.15); }
+  .voteRow .who { display: flex; align-items: center; gap: 10px; font-weight: bold; }
+  .voteRow .dot { width: 22px; height: 22px; border-radius: 50%; }
+  .voteRow .cnt { color: #ffd23b; font-weight: 900; }
+  .voteRow button { padding: 8px 16px; border: none; border-radius: 8px; background: #ff3b52; color: #fff; font-weight: bold; }
+  #skipVote { margin-top: 6px; padding: 12px 30px; border: none; border-radius: 12px; background: #444; color: #fff; font-weight: bold; }
+  #voteResult { color: #fff; font-size: 20px; text-align: center; min-height: 24px; }
+  #topRight { position: fixed; top: 12px; right: 12px; z-index: 10; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+  .iconbtn { padding: 10px 14px; border-radius: 9px; border: 2px solid #444; background: rgba(0,0,0,.6); color: #fff; font-size: 14px; font-weight: bold; }
+  #weapons { position: fixed; bottom: 140px; right: 34px; z-index: 10; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; max-width: 220px; }
+  .wbtn { padding: 8px 11px; border-radius: 9px; border: 2px solid transparent; background: rgba(0,0,0,.5); color: #fff; font-size: 12px; font-weight: bold; }
+  .wbtn.active { border-color: #ffd23b; background: rgba(255,210,59,.22); color: #ffd23b; }
+  .wbtn.locked { opacity: .4; }
 
   /* Loja */
-  #shop { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(4,6,12,.76); z-index: 45; padding: 18px; backdrop-filter: blur(8px); }
-  #shopBox { background: linear-gradient(180deg,#1b1e2a,#0f111a); border: 1px solid rgba(255,59,82,.8); border-radius: 20px; padding: 16px; width: min(440px, 94vw); max-height: 88vh; display: flex; flex-direction: column; box-shadow: 0 24px 70px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.04) inset; }
-  #shopHeader { display: flex; align-items: center; justify-content: space-between; flex: 0 0 auto; }
-  #shopHeader h2 { margin: 0; }
-  #shopCloseX { width: 38px; height: 38px; border-radius: 10px; border: none; background: rgba(255,255,255,.1); color: #fff; font-size: 18px; font-weight: 900; touch-action: manipulation; }
-  #shopScroll { flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior: contain; margin: 8px -4px; padding: 0 4px; }
-  #shopScroll * { touch-action: pan-y; }
-  #shopScroll button { touch-action: manipulation; }
-  #shopBox h2 { color: var(--dz-red); text-align: center; margin-bottom: 4px; letter-spacing: 3px; font-size: 27px; }
-  #shopPts { color: var(--dz-yellow); text-align: center; margin-bottom: 14px; font-weight: 900; }
-  .shopItem { display: flex; justify-content: space-between; align-items: center; gap: 12px; background: linear-gradient(180deg,#202330,#171923); border: 1px solid rgba(255,255,255,.08); border-radius: 14px; padding: 11px 12px; margin-bottom: 9px; }
-  .shopItem .info { color: #fff; display: flex; align-items: center; gap: 10px; min-width: 0; }
-  .shopItem .info .weaponIcon { width: 38px; height: 38px; flex: 0 0 38px; }
-  .shopItem .infoText { min-width: 0; font-weight: 850; }
-  .shopItem .info small { color: #a8adbb; display: block; font-weight: 550; font-size: 10.5px; line-height: 1.3; margin-top: 2px; }
-  .shopItem button { padding: 9px 13px; border: none; border-radius: 9px; font-weight: 900; white-space: nowrap; }
-  .buyBtn { background: var(--dz-yellow); color: #161000; }
-  .ownedBtn { background: #2e8b57; color: #fff; }
-  .cantBtn { background: #393b45; color: #8c909c; }
-  #shopClose { width: 100%; margin-top: 7px; padding: 12px; background: var(--dz-red); color: #fff; border: none; border-radius: 11px; font-weight: 950; }
-  .shopSectionTitle { margin: 16px 2px 8px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.08); color: #9fc4e8; font-size: 11px; letter-spacing: 2.2px; font-weight: 950; }
-  .shopSectionTitle:first-child { margin-top: 2px; padding-top: 0; border-top: none; }
-  .shopMetaPill { display:inline-block; margin-top:4px; padding:2px 6px; border-radius:999px; background:rgba(255,255,255,.06); color:#d8dfec; font-size:9px; font-weight:800; }
-  .shopIcon { width: 40px; height: 40px; flex: 0 0 40px; display:inline-flex; align-items:center; justify-content:center; }
-  .shopIcon svg { width:100%; height:100%; display:block; filter:drop-shadow(0 2px 2px rgba(0,0,0,.35)); }
-
-  #bombBtn { position: fixed; right: 70px; bottom: 196px; z-index: 13; width: 62px; height: 62px; border-radius: 50%; border: 2px solid rgba(255,210,59,.65); background: radial-gradient(circle at 35% 30%,rgba(255,210,59,.26),rgba(20,18,12,.92)); color:#fff; box-shadow: 0 7px 22px rgba(0,0,0,.35), inset 0 0 18px rgba(255,210,59,.08); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0; transition:opacity .2s, transform .12s; }
-  #bombBtn:active { transform:scale(.94); }
-  #bombBtn.disabled { opacity:.38; filter:grayscale(.55); }
-  #bombBtn .bombIcon { width:32px; height:32px; display:block; }
-  #bombBtn .bombIcon svg { width:100%; height:100%; display:block; }
-  #bombCount { font-size:10px; line-height:1; font-weight:950; color:var(--dz-yellow); margin-top:-2px; }
-  body.spectating #bombBtn { opacity:.12; pointer-events:none; }
+  #shop { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.75); z-index: 25; }
+  #shopBox { background: #16161f; border: 2px solid #ff3b52; border-radius: 16px; padding: 22px; width: 320px; max-width: 90%; }
+  #shopBox h2 { color: #ff3b52; text-align: center; margin-bottom: 4px; letter-spacing: 2px; }
+  #shopPts { color: #ffd23b; text-align: center; margin-bottom: 14px; font-weight: bold; }
+  .shopItem { display: flex; justify-content: space-between; align-items: center; background: #1e1e28; border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+  .shopItem .info { color: #fff; }
+  .shopItem .info small { color: #888; display: block; }
+  .shopItem button { padding: 8px 14px; border: none; border-radius: 8px; font-weight: bold; }
+  .buyBtn { background: #ffd23b; color: #000; }
+  .ownedBtn { background: #2e7d4a; color: #fff; }
+  .cantBtn { background: #444; color: #999; }
+  #shopClose { width: 100%; margin-top: 6px; padding: 12px; background: #ff3b52; color: #fff; border: none; border-radius: 10px; font-weight: 900; }
 
   /* Chat */
-  #chatBox { position: fixed; bottom: 180px; left: 14px; width: 290px; max-width: 58%; z-index: 10; pointer-events: none; }
-  #chatMsgs { display: flex; flex-direction: column; gap: 5px; font-size: 12px; }
-  #chatMsgs div { background: rgba(7,9,14,.76); border: 1px solid rgba(255,255,255,.06); padding: 5px 9px; border-radius: 8px; color: #fff; width: fit-content; max-width: 100%; box-shadow: 0 3px 12px rgba(0,0,0,.16); }
-  #chatInputWrap { position: fixed; bottom: max(14px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); z-index: 50; display: none; gap: 6px; width: 90%; max-width: 430px; }
-  #chatInput { flex: 1; padding: 12px; border-radius: 11px; border: 1px solid rgba(255,255,255,.18); background: #151822; color: #fff; font-size: 15px; outline: none; }
-  #chatInput:focus { border-color: var(--dz-red); }
-  #chatSend { padding: 12px 18px; border: none; border-radius: 11px; background: var(--dz-red); color: #fff; font-weight: 900; }
+  #chatBox { position: fixed; bottom: 180px; left: 14px; width: 260px; max-width: 55%; z-index: 10; pointer-events: none; }
+  #chatMsgs { display: flex; flex-direction: column; gap: 3px; font-size: 12px; }
+  #chatMsgs div { background: rgba(0,0,0,.5); padding: 4px 8px; border-radius: 6px; color: #fff; width: fit-content; max-width: 100%; }
+  #chatInputWrap { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 26; display: none; gap: 6px; width: 90%; max-width: 400px; }
+  #chatInput { flex: 1; padding: 12px; border-radius: 10px; border: 2px solid #444; background: #1a1a22; color: #fff; font-size: 15px; }
+  #chatSend { padding: 12px 18px; border: none; border-radius: 10px; background: #ff3b52; color: #fff; font-weight: bold; }
 
-  /* Votação */
-  #vote { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(4,7,16,.86); z-index: 60; padding: 18px; backdrop-filter: blur(7px); }
-  #voteCard { width: min(520px,94vw); max-height: min(760px,92vh); overflow-y: auto; background: linear-gradient(180deg,rgba(21,24,36,.98),rgba(10,12,20,.98)); border: 1px solid rgba(255,210,59,.28); border-radius: 22px; padding: 20px; box-shadow: 0 25px 80px rgba(0,0,0,.55),0 0 40px rgba(255,59,82,.06); }
-  .voteEyebrow { text-align: center; color: #9fc4e8; font-size: 10px; letter-spacing: 3px; font-weight: 900; margin-bottom: 7px; }
-  #vote h2 { color: var(--dz-yellow); font-size: 27px; letter-spacing: 1.4px; text-shadow: 2px 2px 0 #000; text-align: center; line-height: 1.1; }
-  #voteTimer { color: var(--dz-red); font-size: 42px; font-weight: 950; text-align: center; line-height: 1; margin: 12px 0; }
-  #voteList { display: flex; flex-direction: column; gap: 8px; width: 100%; margin-top: 6px; }
-  .voteRow { display: grid; grid-template-columns: minmax(0,1fr) auto auto; align-items: center; gap: 10px; background: #1b1e2a; border: 1px solid rgba(255,255,255,.12); border-radius: 13px; padding: 10px 11px; color: #fff; }
-  .voteRow.voted { border-color: var(--dz-red); background: rgba(255,59,82,.12); box-shadow: inset 0 0 0 1px rgba(255,59,82,.2); }
-  .voteRow .who { display: flex; align-items: center; gap: 9px; font-weight: 850; min-width: 0; }
-  .voteRow .dot { width: 20px; height: 20px; border-radius: 50%; flex: 0 0 20px; box-shadow: inset 0 0 0 2px rgba(255,255,255,.2); }
-  .voteRow .cnt { color: var(--dz-yellow); font-weight: 950; min-width: 18px; text-align: center; }
-  .voteRow button { padding: 8px 14px; border: none; border-radius: 9px; background: var(--dz-red); color: #fff; font-weight: 900; }
-  #skipVote { display: block; margin: 12px auto 0; padding: 11px 26px; border: 1px solid rgba(255,255,255,.12); border-radius: 11px; background: #444854; color: #fff; font-weight: 850; }
-  #voteResult { color: #fff; font-size: 22px; line-height: 1.35; text-align: center; min-height: 28px; padding: 18px 8px 8px; }
-  #voteSpectatorNote { display:none; color:#9fc4e8; text-align:center; font-size:12px; padding:10px 8px 0; }
-
-  #dead { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: radial-gradient(circle,rgba(120,0,10,.25),rgba(12,4,8,.72)); color: #fff; z-index: 35; flex-direction: column; gap: 10px; backdrop-filter: blur(2px); }
-  #dead .big { font-size: 40px; font-weight: 950; color: var(--dz-red); text-shadow: 3px 3px 0 #000; }
+  #dead { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(120,0,10,.4); color: #fff; z-index: 15; flex-direction: column; gap: 10px; }
+  #dead .big { font-size: 40px; font-weight: 900; color: #ff3b52; text-shadow: 3px 3px 0 #000; }
   #dead small { font-size: 15px; opacity: .85; }
-  #dead button { margin-top: 8px; padding: 12px 24px; background: var(--dz-yellow); color: #000; border: none; border-radius: 10px; font-weight: 950; pointer-events: auto; }
-
-  /* Espectador de uma rodada */
-  #spectator { position: fixed; left: 50%; bottom: max(24px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 34; display: none; width: min(430px,92vw); pointer-events: none; }
-  #spectatorCard { pointer-events: auto; background: linear-gradient(180deg,rgba(16,21,31,.94),rgba(7,10,16,.92)); border: 1px solid rgba(127,224,255,.35); border-radius: 15px; padding: 10px 12px; color: #fff; text-align: center; box-shadow: 0 10px 35px rgba(0,0,0,.42); backdrop-filter: blur(10px); }
-  #spectatorCard .specTitle { color: var(--dz-cyan); font-weight: 950; letter-spacing: 1.6px; font-size: 12px; }
-  #spectatorCard small { display:block; color:#b7c4d6; margin-top:2px; }
-  #spectatorTarget { color:#fff; font-weight:850; }
-  #spectateNext { margin-top:7px; border:1px solid rgba(255,255,255,.15); background:#252b38; color:#fff; border-radius:8px; padding:7px 12px; font-weight:800; }
-  body.spectating #stick, body.spectating #actions { opacity: .12; pointer-events: none; }
-  body.spectating #weapons { opacity: .28; pointer-events: none; }
-
-  /* ============ MOBILE ============ */
+  #dead button { margin-top: 8px; padding: 12px 24px; background: #ffd23b; color: #000; border: none; border-radius: 10px; font-weight: 900; pointer-events: auto; }
+  /* ============ MOBILE: HUD enxuto e controles compactos ============ */
   @media (max-width: 820px), (pointer: coarse) {
-    #hud { top: max(8px, env(safe-area-inset-top)); left: 8px; right: 8px; }
-    #scoreboard, #status { font-size: 10.5px; padding: 7px 8px; line-height: 1.38; border-radius: 11px; }
-    #scoreboard { min-width: 0; width: 30vw; max-width: 150px; }
-    #status { min-width: 0; width: 25vw; max-width: 120px; margin-right: 76px; }
-    #levelBadge { top: max(8px, env(safe-area-inset-top)); padding: 5px 9px 6px; font-size: 11px; border-radius: 11px; min-width: 116px; box-shadow: 0 4px 0 #9c6b00,0 7px 18px rgba(0,0,0,.25); }
+    #scoreboard, #status { font-size: 11px; padding: 6px 9px; line-height: 1.4; }
+    #status { margin-right: 76px; }
+    #levelBadge { padding: 5px 10px; font-size: 11px; border-radius: 9px; }
     #levelBadge small { font-size: 8px; }
-    #xpBar { width: 94px; height: 4px; margin-top:3px; }
-    .iconbtn { padding: 7px 9px; font-size: 12px; border-radius: 9px; }
-    #topRight { gap: 5px; top: max(8px, env(safe-area-inset-top)); right: 8px; }
-    #stick { width: 112px; height: 112px; bottom: max(22px, env(safe-area-inset-bottom)); left: 18px; }
-    #stickKnob { width: 50px; height: 50px; left: 31px; top: 31px; }
-    #aimStick { width: 122px; height: 122px; }
-    #aimKnob { width: 60px; height: 60px; left: 31px; top: 31px; }
-    #aimKnob .weaponIcon { width: 36px; height:36px; }
-    #actions { bottom: max(22px, env(safe-area-inset-bottom)); right: 18px; }
-    #bombBtn { right: 48px; bottom: 160px; width:54px; height:54px; }
-    #bombBtn .bombIcon { width:28px; height:28px; }
+    #xpBar { width: 84px; height: 4px; }
+    .iconbtn { padding: 7px 9px; font-size: 12px; }
+    #topRight { gap: 6px; top: 8px; right: 8px; }
+    #stick { width: 108px; height: 108px; bottom: 24px; left: 20px; }
+    #stickKnob { width: 48px; height: 48px; left: 30px; top: 30px; }
+    #aimStick { width: 118px; height: 118px; }
+    #aimKnob { width: 58px; height: 58px; left: 30px; top: 30px; font-size: 24px; }
+    #actions { bottom: 24px; right: 20px; }
     #aimHint { display: none; }
-    #equippedChip { bottom: 150px; right: 14px; font-size: 13px; padding: 5px 10px 5px 7px; }
-    #weapons { bottom: 158px; left: 14px; right: auto; max-width: 52px; flex-direction: column; gap: 6px; align-items: flex-start; }
-    .wbtn { padding: 5px; width: 48px; height: 48px; min-height: 48px; justify-content: center; border-radius: 11px; }
-    .wbtn .weaponIcon { width: 33px; height: 33px; flex-basis:33px; }
+    #weapons { bottom: 150px; left: 16px; right: auto; max-width: 60px; flex-direction: column; gap: 5px; align-items: flex-start; }
+    .wbtn { padding: 7px; font-size: 18px; width: 42px; text-align: center; }
     .wbtn .wname { display: none; }
-    #chatBox { bottom: 165px; left: 72px; width: 190px; max-width: 52vw; }
-    #chatMsgs { font-size: 11px; }
-    #vote { padding: 12px; align-items:center; }
-    #voteCard { width: 100%; max-height: 86vh; border-radius: 18px; padding: 16px 12px; }
-    #vote h2 { font-size: clamp(22px,7vw,28px); letter-spacing: .6px; }
-    #voteTimer { font-size: 40px; margin: 10px 0; }
-    .voteRow { grid-template-columns:minmax(0,1fr) 24px auto; padding: 10px 9px; gap:7px; }
-    .voteRow .who { font-size: 14px; }
-    .voteRow button { padding: 9px 12px; font-size:14px; }
-    #voteResult { font-size: 20px; padding-top:14px; }
-    #shopBox { padding:16px 12px; border-radius:17px; max-height:86vh; }
-    .shopItem { padding:9px; gap:7px; }
-    .shopItem .info .weaponIcon { width:34px; height:34px; flex-basis:34px; }
-    .shopItem .info small { font-size:9.5px; }
-    #spectator { bottom: max(18px, env(safe-area-inset-bottom)); }
+    #chatBox { bottom: 150px; left: 70px; width: 180px; }
   }
 </style>
 </head>
 <body>
 
 <div id="start">
-  <svg id="alps" viewBox="0 0 800 400" preserveAspectRatio="none" aria-hidden="true">
+  <svg id="alps" viewBox="0 0 800 400" preserveAspectRatio="none">
     <polygon points="0,400 120,180 260,320 400,120 560,300 680,200 800,360 800,400" fill="#24384d"/>
     <polygon points="0,400 160,260 300,360 460,220 620,340 800,280 800,400" fill="#1a2a3a"/>
+    <!-- neve nos picos -->
     <polygon points="400,120 370,175 430,175" fill="#dceaf7"/>
     <polygon points="120,180 100,215 145,215" fill="#dceaf7"/>
     <polygon points="560,300 540,330 585,330" fill="#cfe0f0"/>
   </svg>
-
-  <div id="startBattle" aria-hidden="true">
-    <div class="battleSpeedLines"></div>
-
-    <div class="battleLane laneOne">
-      <div class="battleRunner toRight runnerClassic">
-        <span class="battleTag">GRITO DO VADO</span>
-        <span class="battleSkin" data-start-skin="classic"></span>
-        <span class="battleWeapon" data-start-weapon="grito"></span>
-        <span class="soundWave"></span><span class="soundWave w2"></span>
-      </div>
-    </div>
-
-    <div class="battleLane laneTwo">
-      <div class="battleRunner toLeft runnerPregnant">
-        <span class="battleTag">GESTANTE + ESCOVA</span>
-        <span class="battleSkin" data-start-skin="gravida"></span>
-        <span class="battleWeapon" data-start-weapon="escova"></span>
-        <span class="muzzlePulse"></span>
-      </div>
-    </div>
-
-    <div class="battleLane laneThree">
-      <div class="battleRunner toRight runnerCapy">
-        <span class="battleTag">CAPIVARA BRABA</span>
-        <span class="battleSkin" data-start-skin="capivara"></span>
-        <span class="battleWeapon" data-start-weapon="espada"></span>
-        <span class="muzzlePulse"></span>
-      </div>
-    </div>
-
-    <span class="flyingShot brushShot" data-start-weapon="escova"></span>
-    <span class="flyingShot leafShot" data-start-weapon="espada"></span>
-    <span class="bombArc" data-start-utility="pingaLele"></span>
-    <span class="coverExplosion"></span>
-    <div class="pickupVest"><span class="startUtilityIcon" data-start-utility="mamaeMarcia"></span>MAMÃE MÁRCIA<br><small>+60 ARMOR</small></div>
-  </div>
-
-  <div class="startContent">
-    <div class="startModePill">⚡ MULTIPLAYER ARENA • MOBILE + DESKTOP</div>
-    <div class="presents">Bubu e Julinha apresenta</div>
-    <div class="brand">🏔️ um jogo dos campeões 🏔️</div>
-    <h1>DEADZONE</h1>
-    <div class="edition">ALPES EDITION</div>
-    <div class="snow">❄️ corra • atire • vote • sobreviva ❄️</div>
-    <div class="startLoadout">
-      <span class="startChip"><span class="miniStartIcon" data-start-utility="mamaeMarcia"></span>Mamãe Márcia</span>
-      <span class="startChip"><span class="miniStartIcon" data-start-utility="pingaLele"></span>Pinga do Lelê</span>
-      <span class="startChip"><span class="miniStartIcon" data-start-skin="gravida"></span>Gestante</span>
-      <span class="startChip"><span class="miniStartIcon" data-start-skin="capivara"></span>Capivara</span>
-    </div>
-    <input id="nameInput" maxlength="12" placeholder="Seu nome de guerra">
-    <button id="playBtn">JOGAR ▶</button>
-    <div class="connStatus" id="connStatus"></div>
-    <div class="lvlnote" id="lvlnote"></div>
-  </div>
+  <div class="presents">Bubu e Julinha apresenta</div>
+  <div class="brand">🏔️ um jogo dos campeões 🏔️</div>
+  <h1>DEADZONE</h1>
+  <div class="edition">ALPES EDITION</div>
+  <div class="snow">❄️ arena • respawn infinito • suba de nível ❄️</div>
+  <input id="nameInput" maxlength="12" placeholder="Seu nome de guerra">
+  <button id="playBtn">JOGAR ▶</button>
+  <div class="lvlnote" id="lvlnote"></div>
 </div>
 
 <canvas id="game"></canvas>
@@ -376,36 +155,25 @@
 <div id="stick"><div id="stickBase"></div><div id="stickKnob"></div></div>
 
 <div id="weapons"></div>
-<button id="bombBtn" class="disabled" title="Pinga do Lelê • Q"><span class="bombIcon" id="bombIcon"></span><small id="bombCount">0</small></button>
 
-<div id="equippedChip"><span class="weaponIcon" id="equippedIcon"></span><span id="equippedName">Chinelo</span></div>
 <div id="actions">
-  <div id="aimStick"><div id="aimBase"></div><div id="aimKnob"><span class="weaponIcon" id="aimWeaponIcon"></span></div></div>
+  <div id="aimStick"><div id="aimBase"></div><div id="aimKnob">🩴</div></div>
 </div>
 <div id="aimHint">arraste p/ mirar e atirar</div>
 
 <div id="vote">
-  <div id="voteCard">
-    <div class="voteEyebrow">REUNIÃO DE EMERGÊNCIA</div>
-    <h2>🗳️ QUEM SAI DESTA TELA?</h2>
-    <div id="voteTimer">30</div>
-    <div id="voteList"></div>
-    <button id="skipVote">Pular voto</button>
-    <div id="voteSpectatorNote">👁️ Você está como espectador e não vota nesta rodada.</div>
-    <div id="voteResult"></div>
-  </div>
+  <h2>🗳️ QUEM SAI DESTA TELA?</h2>
+  <div id="voteTimer">30</div>
+  <div id="voteList"></div>
+  <button id="skipVote">Pular voto</button>
+  <div id="voteResult"></div>
 </div>
 
 <div id="shop">
   <div id="shopBox">
-    <div id="shopHeader">
-      <h2>LOJA</h2>
-      <button id="shopCloseX" aria-label="Fechar">✕</button>
-    </div>
+    <h2>LOJA</h2>
     <div id="shopPts">Pontos: 0</div>
-    <div id="shopScroll">
-      <div id="shopItems"></div>
-    </div>
+    <div id="shopItems"></div>
     <button id="shopClose">FECHAR</button>
   </div>
 </div>
@@ -414,15 +182,6 @@
   <div class="big">☠️ MORREU</div>
   <small>respawn em instantes...</small>
   <button id="deadShop">🛒 Abrir Loja</button>
-</div>
-
-<div id="spectator">
-  <div id="spectatorCard">
-    <div class="specTitle">👁️ MODO EXPECTADOR</div>
-    <small>Você foi ejetado e fica fora por 1 rodada.</small>
-    <div>Assistindo: <span id="spectatorTarget">procurando jogador...</span></div>
-    <button id="spectateNext">Trocar câmera</button>
-  </div>
 </div>
 
 <script>
@@ -438,20 +197,10 @@ function resize() {
 }
 window.addEventListener('resize', resize); resize();
 
-let ws, myId = null, world = { w: 1600, h: 1200 }, weapons = {}, utilities = {}, skins = {}, gameMap = { walls: [], floor: '#2a2e3a' };
-let currentMapName = '';
-let state = { players: [], bullets: [], events: [], chat: [], phase: 'playing' };
-let spectateTargetId = null;
+let ws, myId = null, world = { w: 1600, h: 1200 }, weapons = {}, gameMap = { walls: [], floor: '#2a2e3a' };
+let state = { players: [], bullets: [], events: [], chat: [] };
 let myAngle = 0;
 const input = { up: false, down: false, left: false, right: false };
-// Ao minimizar/trocar de aba: zera movimento e tiro pra o personagem não andar sozinho
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
-    input.up = input.down = input.left = input.right = false;
-    if (typeof stopAutoFire === 'function') stopAutoFire();
-    if (myId !== null) send({ type: 'input', input, angle: myAngle || 0 });
-  }
-});
 let currentWeapon = 'chinelo';
 let myData = null;
 const render = {}; // posições interpoladas por id: {x,y,tx,ty}
@@ -489,86 +238,43 @@ function onLevelUp(newLevel) {
   send({ type: 'setName', name: myName, level: newLevel });
 }
 
-// ==================== ENGINE DE SOM ====================
-// Continua sem assets externos, mas cada arma agora tem identidade sonora própria.
-// O Grito do Vado usa voz do navegador quando disponível e um fallback vocal sintético.
+// ==================== ENGINE DE SOM (Web Audio API, sintético) ====================
+// Sem arquivos. Para trocar por MP3 depois: crie um <audio> ou use fetch+decodeAudioData
+// e substitua os corpos das funções abaixo por audio.play().
 let audioCtx = null;
-let lastVadoSpeech = 0;
-function initAudio() {
-  if (!audioCtx) {
-    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch {}
-  }
-  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{});
-}
+function initAudio() { if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch {} } }
 function tone(freq, dur, type, vol, sweepTo) {
   if (!audioCtx) return;
   const t = audioCtx.currentTime;
   const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
   osc.type = type || 'square';
-  osc.frequency.setValueAtTime(Math.max(20, freq), t);
-  if (sweepTo) osc.frequency.exponentialRampToValueAtTime(Math.max(20, sweepTo), t + dur);
+  osc.frequency.setValueAtTime(freq, t);
+  if (sweepTo) osc.frequency.exponentialRampToValueAtTime(sweepTo, t + dur);
   gain.gain.setValueAtTime(vol || 0.15, t);
   gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
   osc.connect(gain); gain.connect(audioCtx.destination);
   osc.start(t); osc.stop(t + dur);
 }
-function noise(dur, vol, filterType, freq) {
+function noise(dur, vol) {
   if (!audioCtx) return;
   const t = audioCtx.currentTime;
-  const buf = audioCtx.createBuffer(1, Math.max(1, Math.floor(audioCtx.sampleRate * dur)), audioCtx.sampleRate);
+  const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * dur, audioCtx.sampleRate);
   const data = buf.getChannelData(0);
   for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
   const src = audioCtx.createBufferSource(); src.buffer = buf;
   const gain = audioCtx.createGain(); gain.gain.setValueAtTime(vol || 0.2, t); gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
-  if (filterType && freq) {
-    const filter = audioCtx.createBiquadFilter(); filter.type = filterType; filter.frequency.value = freq;
-    src.connect(filter); filter.connect(gain);
-  } else src.connect(gain);
-  gain.connect(audioCtx.destination); src.start(t);
-}
-function shoutVado() {
-  const now = Date.now();
-  // corpo do grito: ruído + formantes graves para não depender só do TTS
-  noise(0.28, 0.09, 'bandpass', 900);
-  tone(175, 0.34, 'sawtooth', 0.09, 105);
-  setTimeout(() => tone(330, 0.25, 'sawtooth', 0.045, 210), 20);
-
-  if ('speechSynthesis' in window && now - lastVadoSpeech > 700) {
-    lastVadoSpeech = now;
-    try {
-      const u = new SpeechSynthesisUtterance('VAAAAADO!');
-      u.lang = 'pt-BR'; u.rate = 0.72; u.pitch = 0.48; u.volume = 0.9;
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(u);
-    } catch {}
-  }
+  src.connect(gain); gain.connect(audioCtx.destination); src.start(t);
 }
 const sound = {
-  // chinelo: vento do arremesso + tapa seco
-  chinelo: () => { noise(0.10, 0.07, 'highpass', 1400); setTimeout(()=>tone(150,0.06,'triangle',0.12,90),45); },
-  // grito: voz "VAAAAADO" + corpo vocal sintético
-  grito:   () => shoutVado(),
-  // escova de cabelo: plástico batendo + raspado das cerdas
-  escova:  () => { noise(0.12,0.055,'bandpass',2200); tone(520,0.05,'triangle',0.075,310); },
-  // cocô: splat úmido e grave
-  coco:    () => { noise(0.20,0.14,'lowpass',650); tone(105,0.20,'sine',0.09,52); },
-  // espada-de-são-jorge: folha cortando o ar, sem som metálico
-  espada:  () => { noise(0.15,0.075,'bandpass',1700); setTimeout(()=>tone(260,0.07,'triangle',0.06,170),55); },
-  // peido do pepeu: pum grave e vibrado
-  peido:   () => { tone(90,0.22,'sawtooth',0.13,55); noise(0.16,0.06,'lowpass',400); },
-  // lilika possuída: grito agudo e distorcido de criança
-  lilika:  () => { tone(720,0.14,'square',0.1,340); setTimeout(()=>tone(520,0.12,'sawtooth',0.08,260),70); noise(0.1,0.05,'highpass',1800); },
-  // dracarys: whoosh de fogo grave lançando a bola
-  dracarys:() => { noise(0.22,0.12,'lowpass',900); tone(140,0.18,'sawtooth',0.1,70); },
-  // explosão de fogo (impacto da bola)
-  fire:    () => { noise(0.3,0.16,'lowpass',700); tone(95,0.3,'sawtooth',0.13,45); setTimeout(()=>noise(0.14,0.06,'highpass',1400),25); },
-  bomb:    () => { noise(0.34,0.19,'lowpass',820); tone(82,0.36,'sine',0.16,38); setTimeout(()=>noise(0.18,0.08,'highpass',1500),30); },
-  armor:   () => { tone(760,0.07,'square',0.05,560); tone(1080,0.04,'sine',0.04,820); },
-  death:   () => { tone(190,0.42,'sawtooth',0.17,42); noise(0.18,0.05,'lowpass',500); },
-  hit:     () => tone(470, 0.045, 'square', 0.055, 310),
-  buy:     () => { tone(620,0.08,'sine',0.13); setTimeout(()=>tone(920,0.1,'sine',0.13),80); },
-  levelup: () => { [500,700,900,1200].forEach((f,i)=>setTimeout(()=>tone(f,0.15,'sine',0.16),i*90)); },
-  heal:    () => { tone(660,0.1,'sine',0.12,880); setTimeout(()=>tone(990,0.12,'sine',0.1),90); },
+  chinelo: () => { tone(420, 0.09, 'triangle', 0.14, 180); }, // "vupt" do chinelo girando
+  grito:   () => { tone(180, 0.3, 'sawtooth', 0.2, 90); noise(0.15, 0.08); }, // grito grave "VAAADO"
+  escova:  () => tone(300, 0.04, 'square', 0.08, 220),        // metralha rápida
+  coco:    () => { noise(0.2, 0.22); tone(90, 0.18, 'sawtooth', 0.12, 50); }, // splat
+  espada:  () => { tone(800, 0.14, 'sawtooth', 0.18, 200); tone(1200,0.08,'sine',0.1); }, // corte metálico
+  death:   () => tone(200, 0.4, 'sawtooth', 0.2, 40),
+  hit:     () => tone(500, 0.04, 'square', 0.06),
+  buy:     () => { tone(600, 0.08, 'sine', 0.15); setTimeout(()=>tone(900,0.1,'sine',0.15),80); },
+  levelup: () => { [500,700,900,1200].forEach((f,i)=>setTimeout(()=>tone(f,0.15,'sine',0.18),i*90)); },
   shoot:   (w) => { if (sound[w]) sound[w](); else sound.chinelo(); }
 };
 
@@ -584,36 +290,6 @@ function spawnSpark(x, y) {
     particles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 1, r: 1.5 + Math.random() * 2, type: 'spark' });
   }
 }
-function spawnHeal(x, y) {
-  for (let i = 0; i < 12; i++) {
-    const a = -Math.PI/2 + (Math.random()-.5) * 1.2, sp = 1 + Math.random() * 2.5;
-    particles.push({ x: x + (Math.random()-.5)*20, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 1, life: 1, r: 2 + Math.random() * 3, type: 'heal' });
-  }
-}
-function spawnArmorSpark(x, y) {
-  for (let i = 0; i < 12; i++) {
-    const a = Math.random() * Math.PI * 2, sp = 1.5 + Math.random() * 4;
-    particles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 1, r: 1.5 + Math.random() * 2.5, type: 'armor' });
-  }
-}
-function spawnExplosion(x, y, radius) {
-  const count = 44;
-  for (let i = 0; i < count; i++) {
-    const a = Math.random() * Math.PI * 2, sp = 2 + Math.random() * 7;
-    particles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 1, r: 3 + Math.random() * 6, type: i % 3 === 0 ? 'smoke' : 'fire' });
-  }
-  decals.push({ x, y, r: 4, maxR: Math.min(48, (radius || 150) * .32), life: .8, burn: true });
-}
-
-function spawnFireBlast(x, y, radius) {
-  const count = 30;
-  for (let i = 0; i < count; i++) {
-    const a = Math.random() * Math.PI * 2, sp = 1.5 + Math.random() * 6;
-    particles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 1, life: 1, r: 3 + Math.random() * 5, type: i % 4 === 0 ? 'smoke' : 'fire' });
-  }
-  decals.push({ x, y, r: 4, maxR: Math.min(40, (radius || 90) * .34), life: .7, burn: true });
-}
-
 function addDeathPool(x, y) {
   decals.push({ x, y, r: 4, maxR: 30 + Math.random() * 20, life: 1 });
   spawnBlood(x, y, Math.random() * Math.PI * 2, 30);
@@ -621,15 +297,13 @@ function addDeathPool(x, y) {
 }
 
 function connect() {
-  // fecha socket anterior pendente pra não empilhar conexões
-  if (ws && (ws.readyState === 0 || ws.readyState === 1)) { try { ws.onclose = null; ws.close(); } catch {} }
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   ws = new WebSocket(`${proto}://${location.host}`);
   ws.onmessage = (ev) => {
     const msg = JSON.parse(ev.data);
     if (msg.type === 'init') {
-      myId = msg.id; world = msg.world; weapons = msg.weapons; utilities = msg.utilities || {}; skins = msg.skins || {}; gameMap = msg.map; currentMapName = (msg.map && msg.map.name) || '';
-      buildWeaponBar(); buildShop(); setAimWeaponIcon(currentWeapon);
+      myId = msg.id; world = msg.world; weapons = msg.weapons; gameMap = msg.map;
+      buildWeaponBar(); buildShop();
     } else if (msg.type === 'state') {
       state = msg;
       myData = state.players.find(p => p.id === myId) || myData;
@@ -641,17 +315,16 @@ function connect() {
       for (const id in render) if (!state.players.find(p => p.id == id)) delete render[id];
       if (msg.events) for (const e of msg.events) {
         if (e.kind === 'hit') { spawnBlood(e.x, e.y, e.angle, 8); shake = Math.min(shake + 3, 10); sound.hit(); }
-        else if (e.kind === 'armorHit') { spawnArmorSpark(e.x, e.y); sound.armor(); }
-        else if (e.kind === 'bombExplosion') { spawnExplosion(e.x, e.y, e.radius || 150); shake = Math.min(shake + 10, 16); sound.bomb(); }
-        else if (e.kind === 'fireExplosion') { spawnFireBlast(e.x, e.y, e.radius || 90); shake = Math.min(shake + 8, 15); sound.fire(); }
         else if (e.kind === 'death') { addDeathPool(e.x, e.y); sound.death(); }
         else if (e.kind === 'spark') spawnSpark(e.x, e.y);
-        else if (e.kind === 'heal') { spawnHeal(e.x, e.y); if (e.id === myId) sound.heal(); }
         else if (e.kind === 'muzzle') {
-          muzzles.push({ x: e.x, y: e.y, angle: e.angle, weapon: e.weapon || 'chinelo', life: 1 });
-          // o servidor agora informa a arma exata, evitando som incorreto por aproximação de posição
+          muzzles.push({ x: e.x, y: e.y, angle: e.angle, life: 1 });
+          // som do tiro só pra tiros próximos de mim (evita cacofonia)
           const me = state.players.find(p => p.id === myId);
-          if (me && Math.hypot(me.x - e.x, me.y - e.y) < 900) sound.shoot(e.weapon || 'chinelo');
+          if (me && Math.hypot(me.x - e.x, me.y - e.y) < 900) {
+            const shooter = state.players.find(p => Math.abs(p.x - e.x) < 30 && Math.abs(p.y - e.y) < 30);
+            sound.shoot(shooter ? shooter.weapon : 'chinelo');
+          }
         }
         else if (e.kind === 'kill') {
           // aura super sayajin no matador
@@ -662,59 +335,504 @@ function connect() {
       if (msg.chat && msg.chat.length) for (const c of msg.chat) addChat(c);
       refreshWeaponBar(); refreshShop();
       updateVoteUI(); // atualiza tela de votação conforme a fase
-      updateSpectatorUI();
     } else if (msg.type === 'newMap') {
-      gameMap = msg.map; currentMapName = msg.name || (msg.map && msg.map.name) || '';
-      // a mensagem de nova tela já chega pelo chat do servidor; não duplica no cliente
+      gameMap = msg.map;
+      flashMsg('🏠 Nova tela: ' + msg.name);
     } else if (msg.type === 'ping') {
       send({ type: 'pong' });
     } else if (msg.type === 'buyResult') {
-      if (msg.ok) { currentWeapon = msg.weapon; setAimWeaponIcon(currentWeapon); sound.buy(); flashMsg('Comprado! ' + weapons[msg.weapon].name); }
+      if (msg.ok) { currentWeapon = msg.weapon; sound.buy(); flashMsg('Comprado! ' + weapons[msg.weapon].name); }
       else flashMsg('❌ ' + msg.reason);
-    } else if (msg.type === 'shopResult') {
-      if (msg.ok) { sound.buy(); flashMsg(msg.message || 'Compra realizada!'); }
-      else flashMsg('❌ ' + (msg.reason || 'não foi possível comprar'));
     }
   };
-  ws.onopen = () => {
-    connState = 'open';
-    // ao (re)conectar, reenvia identidade pro servidor não criar jogador sem nome
-    if (hasJoined) send({ type: 'setName', name: myName, level: profile.level });
-  };
-  ws.onerror = () => { connState = 'error'; };
-  ws.onclose = () => {
-    connState = 'closed';
-    if (hasJoined) {
-      // durante o jogo: tenta reconectar em silêncio, sem jogar o usuário fora
-      setConnStatusOverlay('🔌 Reconectando...');
-      setTimeout(connect, 1500);
-    }
-  };
+  ws.onclose = () => setTimeout(connect, 1000);
 }
 function send(obj) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj)); }
 
 let myName = 'Player';
-let hasJoined = false;          // já apertou JOGAR ao menos uma vez
-let connState = 'idle';         // idle | connecting | open | error | closed
 // mostra o nível salvo na abertura
 (function(){ const n = document.getElementById('lvlnote'); if (n) n.textContent = profile.level > 1 ? `🔥 Bem-vindo de volta! Você é nível ${profile.level}` : ''; })();
-
-function setStartStatus(text, isError) {
-  const el = document.getElementById('connStatus');
-  if (!el) return;
-  el.className = 'connStatus' + (isError ? ' err' : '');
-  el.innerHTML = text ? (isError ? text : '<span class="spin"></span>' + text) : '';
-}
-// overlay leve de reconexão durante o jogo (usa o chat como canal de aviso)
-function setConnStatusOverlay(text) { flashMsg(text); }
-
 document.getElementById('playBtn').onclick = () => {
   myName = document.getElementById('nameInput').value.trim() || 'Player';
   initAudio(); // precisa ser após um toque/clique do usuário
   profile.level = levelFromXp(profile.xp);
   updateLevelUI();
+  connect();
+  const wait = setInterval(() => { if (myId !== null) { clearInterval(wait); send({ type: 'setName', name: myName, level: profile.level }); } }, 100);
+  document.getElementById('start').style.display = 'none';
+};
 
-  const startEl = document.getElementById('start');
-  startEl.classList.add('connecting');
-  setStartStatus('Conectando ao servidor...', false);
-  connState = 'connecting';
+// ---- Barra de armas (só as que possui) ----
+function buildWeaponBar() {
+  const bar = document.getElementById('weapons');
+  bar.innerHTML = '';
+  for (const key in weapons) {
+    const btn = document.createElement('button');
+    btn.className = 'wbtn'; btn.dataset.w = key;
+    btn.innerHTML = (weapons[key].emoji || '') + '<span class="wname"> ' + weapons[key].name + '</span>';
+    btn.onclick = () => {
+      if (!myData || !myData.owned[key]) { openShop(); return; }
+      currentWeapon = key;
+      send({ type: 'switchWeapon', weapon: key });
+      document.getElementById('aimKnob').textContent = (weapons[key] && weapons[key].emoji) || '🩴';
+    };
+    bar.appendChild(btn);
+  }
+  refreshWeaponBar();
+}
+function refreshWeaponBar() {
+  if (!myData) return;
+  document.querySelectorAll('#weapons .wbtn').forEach(btn => {
+    const k = btn.dataset.w;
+    btn.classList.toggle('active', k === currentWeapon && myData.owned[k]);
+    btn.classList.toggle('locked', !myData.owned[k]);
+  });
+}
+
+// ---- Loja ----
+function buildShop() {
+  const items = document.getElementById('shopItems');
+  items.innerHTML = '';
+  for (const key in weapons) {
+    const w = weapons[key];
+    const row = document.createElement('div');
+    row.className = 'shopItem'; row.dataset.w = key;
+    row.innerHTML = `<div class="info">${w.emoji || ''} ${w.name}<small>Dano ${w.damage} • ${w.cost === 0 ? 'inicial' : w.cost + ' pts'}</small></div>`;
+    const btn = document.createElement('button');
+    row.appendChild(btn); items.appendChild(row);
+    btn.onclick = () => send({ type: 'buy', weapon: key });
+  }
+  refreshShop();
+}
+function refreshShop() {
+  if (!myData) return;
+  document.getElementById('shopPts').textContent = 'Pontos: ' + myData.points;
+  document.querySelectorAll('#shopItems .shopItem').forEach(row => {
+    const k = row.dataset.w, w = weapons[k], btn = row.querySelector('button');
+    if (myData.owned[k]) { btn.textContent = 'Equipar'; btn.className = 'ownedBtn';
+      btn.onclick = () => { currentWeapon = k; send({ type: 'switchWeapon', weapon: k }); closeShop(); };
+    } else if (myData.points >= w.cost) { btn.textContent = 'Comprar'; btn.className = 'buyBtn';
+      btn.onclick = () => send({ type: 'buy', weapon: k });
+    } else { btn.textContent = w.cost + ' pts'; btn.className = 'cantBtn'; btn.onclick = null; }
+  });
+}
+function openShop() { document.getElementById('shop').style.display = 'flex'; refreshShop(); }
+function closeShop() { document.getElementById('shop').style.display = 'none'; }
+document.getElementById('shopBtn').onclick = openShop;
+document.getElementById('shopClose').onclick = closeShop;
+document.getElementById('deadShop').onclick = openShop;
+
+// ---- Votação ----
+let myVote = null;
+function updateVoteUI() {
+  const panel = document.getElementById('vote');
+  if (state.phase === 'voting') {
+    panel.style.display = 'flex';
+    document.getElementById('voteResult').textContent = '';
+    document.getElementById('skipVote').style.display = '';
+    document.getElementById('voteList').style.display = '';
+    document.getElementById('voteTimer').textContent = state.timeLeft != null ? state.timeLeft : '';
+    const tally = {};
+    if (state.votes) for (const v in state.votes) { const t = state.votes[v]; if (t && t !== 'skip') tally[t] = (tally[t]||0)+1; }
+    const list = document.getElementById('voteList');
+    list.innerHTML = '';
+    for (const p of state.players) {
+      if (p.banned) continue;
+      const row = document.createElement('div');
+      row.className = 'voteRow' + (myVote == p.id ? ' voted' : '');
+      row.innerHTML = `<div class="who"><span class="dot" style="background:${p.color}"></span>${escapeHtml(p.name)}${p.id===myId?' (você)':''} <span style="color:#888">${p.kills}💀</span></div><span class="cnt">${tally[p.id]||0}</span>`;
+      if (p.id !== myId) {
+        const btn = document.createElement('button'); btn.textContent = 'Votar';
+        btn.onclick = () => { myVote = p.id; send({ type: 'vote', target: p.id }); sound.hit(); updateVoteUI(); };
+        row.appendChild(btn);
+      }
+      list.appendChild(row);
+    }
+  } else if (state.phase === 'result') {
+    panel.style.display = 'flex';
+    document.getElementById('voteList').style.display = 'none';
+    document.getElementById('skipVote').style.display = 'none';
+    document.getElementById('voteTimer').textContent = '';
+    const banned = state.players.find(p => p.banned);
+    document.getElementById('voteResult').innerHTML = banned
+      ? `🚪 <b style="color:#ff3b52">${escapeHtml(banned.name)}</b> foi banido desta tela!<br><small style="color:#9fc4e8">volta na próxima</small>`
+      : '🤝 Ninguém foi banido';
+  } else {
+    panel.style.display = 'none';
+    myVote = null;
+  }
+}
+document.getElementById('skipVote').onclick = () => { myVote = 'skip'; send({ type: 'vote', target: 'skip' }); };
+
+// ---- Chat ----
+function addChat(c) {
+  const box = document.getElementById('chatMsgs');
+  const el = document.createElement('div');
+  el.innerHTML = `<b style="color:${c.color}">${escapeHtml(c.name)}:</b> ${escapeHtml(c.text)}`;
+  box.appendChild(el);
+  while (box.children.length > 6) box.removeChild(box.firstChild);
+  setTimeout(() => { if (el.parentNode) el.remove(); }, 12000);
+}
+function escapeHtml(s) { return String(s).replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m])); }
+function flashMsg(text) { addChat({ name: 'sistema', color: '#ffd23b', text }); }
+
+const chatWrap = document.getElementById('chatInputWrap');
+const chatInput = document.getElementById('chatInput');
+document.getElementById('chatBtn').onclick = () => { chatWrap.style.display = 'flex'; chatInput.focus(); };
+function sendChat() {
+  const t = chatInput.value.trim();
+  if (t) send({ type: 'chat', text: t });
+  chatInput.value = ''; chatWrap.style.display = 'none';
+}
+document.getElementById('chatSend').onclick = sendChat;
+chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChat(); if (e.key === 'Escape') { chatInput.value=''; chatWrap.style.display='none'; } });
+
+// ---- Joystick de MOVIMENTO (esquerdo) — só anda, não mira ----
+const stick = document.getElementById('stick'), knob = document.getElementById('stickKnob');
+let stickId = null; const maxDist = 48;
+stick.addEventListener('touchstart', (e) => { stickId = e.changedTouches[0].identifier; e.preventDefault(); });
+stick.addEventListener('touchmove', (e) => {
+  for (const t of e.changedTouches) {
+    if (t.identifier !== stickId) continue;
+    const rect = stick.getBoundingClientRect();
+    let dx = t.clientX - rect.left - 65, dy = t.clientY - rect.top - 65;
+    const d = Math.hypot(dx, dy);
+    if (d > maxDist) { dx = dx / d * maxDist; dy = dy / d * maxDist; }
+    knob.style.left = (36 + dx) + 'px'; knob.style.top = (36 + dy) + 'px';
+    const dead = 12;
+    input.left = dx < -dead; input.right = dx > dead; input.up = dy < -dead; input.down = dy > dead;
+    // se não estiver mirando, o personagem "olha" pra onde anda (fallback)
+    if (d > dead && !aiming) myAngle = Math.atan2(dy, dx);
+  }
+  e.preventDefault();
+});
+function stickEnd() { stickId = null; knob.style.left = '36px'; knob.style.top = '36px'; input.up = input.down = input.left = input.right = false; }
+stick.addEventListener('touchend', stickEnd); stick.addEventListener('touchcancel', stickEnd);
+
+// ---- Joystick de MIRA (direito) — estilo Free Fire: arrasta pra mirar, atira sozinho ----
+const aimStick = document.getElementById('aimStick'), aimKnob = document.getElementById('aimKnob');
+let aimId = null, aiming = false, fireInterval = null;
+const aimMax = 55;
+function startAutoFire() { if (fireInterval) return; send({ type: 'attack' }); fireInterval = setInterval(() => send({ type: 'attack' }), 110); }
+function stopAutoFire() { clearInterval(fireInterval); fireInterval = null; }
+aimStick.addEventListener('touchstart', (e) => { aimId = e.changedTouches[0].identifier; aiming = true; e.preventDefault(); });
+aimStick.addEventListener('touchmove', (e) => {
+  for (const t of e.changedTouches) {
+    if (t.identifier !== aimId) continue;
+    const rect = aimStick.getBoundingClientRect();
+    let dx = t.clientX - rect.left - 75, dy = t.clientY - rect.top - 75;
+    const d = Math.hypot(dx, dy);
+    let vx = dx, vy = dy;
+    if (d > aimMax) { vx = dx / d * aimMax; vy = dy / d * aimMax; }
+    aimKnob.style.left = (38 + vx) + 'px'; aimKnob.style.top = (38 + vy) + 'px';
+    if (d > 14) { myAngle = Math.atan2(dy, dx); startAutoFire(); } // mira + dispara
+  }
+  e.preventDefault();
+});
+function aimEnd() { aimId = null; aiming = false; aimKnob.style.left = '38px'; aimKnob.style.top = '38px'; stopAutoFire(); }
+aimStick.addEventListener('touchend', aimEnd); aimStick.addEventListener('touchcancel', aimEnd);
+
+// ---- Desktop ----
+window.addEventListener('keydown', (e) => {
+  if (document.activeElement === chatInput) return;
+  if (e.key === 'w' || e.key === 'ArrowUp') input.up = true;
+  if (e.key === 's' || e.key === 'ArrowDown') input.down = true;
+  if (e.key === 'a' || e.key === 'ArrowLeft') input.left = true;
+  if (e.key === 'd' || e.key === 'ArrowRight') input.right = true;
+  if (e.key === ' ') send({ type: 'attack' });
+  if (e.key === 'Enter') { chatWrap.style.display = 'flex'; chatInput.focus(); }
+});
+window.addEventListener('keyup', (e) => {
+  if (e.key === 'w' || e.key === 'ArrowUp') input.up = false;
+  if (e.key === 's' || e.key === 'ArrowDown') input.down = false;
+  if (e.key === 'a' || e.key === 'ArrowLeft') input.left = false;
+  if (e.key === 'd' || e.key === 'ArrowRight') input.right = false;
+});
+window.addEventListener('mousemove', (e) => { if (!aiming) myAngle = Math.atan2(e.clientY - H / 2, e.clientX - W / 2); });
+window.addEventListener('mousedown', (e) => { if (e.target.closest('#vote,#shop,#topRight,#chatInputWrap,#start')) return; startAutoFire(); });
+window.addEventListener('mouseup', () => stopAutoFire());
+
+setInterval(() => { if (myId !== null) send({ type: 'input', input, angle: myAngle }); }, 50);
+
+// ---- Personagem bean ----
+let animTime = 0;
+const prevPos = {};
+function drawBean(sx, sy, p, isMe) {
+  const bob = p.moving ? Math.sin(animTime * 12 + p.id) * 3 : 0;
+  const legSwing = p.moving ? Math.sin(animTime * 12 + p.id) * 5 : 0;
+  ctx.save(); ctx.translate(sx, sy + bob);
+  ctx.fillStyle = 'rgba(0,0,0,.3)';
+  ctx.beginPath(); ctx.ellipse(0, 20, 16, 6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = shade(p.color, -30);
+  ctx.fillRect(-9, 14 - Math.max(0, legSwing), 7, 10 + Math.max(0, legSwing));
+  ctx.fillRect(2, 14 + Math.max(0, -legSwing), 7, 10 + Math.max(0, -legSwing));
+  ctx.fillStyle = p.color; roundRect(-15, -20, 30, 38, 15); ctx.fill();
+  ctx.fillStyle = shade(p.color, 40); roundRect(-8, -6, 16, 22, 8); ctx.fill();
+  ctx.strokeStyle = shade(p.color, -50); ctx.lineWidth = 2.5; roundRect(-15, -20, 30, 38, 15); ctx.stroke();
+  const ex = Math.cos(p.angle) * 5, ey = Math.sin(p.angle) * 3;
+  ctx.fillStyle = '#bfe6ff'; roundRect(-3 + ex, -14 + ey, 16, 11, 5); ctx.fill();
+  ctx.strokeStyle = shade(p.color, -50); ctx.lineWidth = 2; roundRect(-3 + ex, -14 + ey, 16, 11, 5); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.beginPath(); ctx.arc(2 + ex, -11 + ey, 2, 0, Math.PI * 2); ctx.fill();
+  ctx.save(); ctx.rotate(p.angle);
+  if (p.weapon === 'grito') { ctx.fillStyle = '#7fe0ff'; ctx.beginPath(); ctx.moveTo(12,-2); ctx.lineTo(26,-7); ctx.lineTo(26,7); ctx.lineTo(12,2); ctx.closePath(); ctx.fill(); ctx.strokeStyle='#2a8ab0'; ctx.lineWidth=1.5; ctx.stroke(); }
+  else if (p.weapon === 'espada') { ctx.fillStyle = '#ffd23b'; ctx.fillRect(12, -2, 22, 4); ctx.fillStyle='#8a6a20'; ctx.fillRect(10,-3,4,6); }
+  else if (p.weapon === 'coco') { ctx.fillStyle = '#6b4423'; ctx.beginPath(); ctx.arc(20,0,5,0,Math.PI*2); ctx.fill(); }
+  else if (p.weapon === 'escova') { ctx.fillStyle = '#ff3b52'; ctx.fillRect(12,-3,14,6); ctx.fillStyle='#111'; ctx.fillRect(22,-4,5,8); }
+  else { ctx.fillStyle = '#ff5fa2'; roundRect(12,-4,16,8,4); ctx.fill(); } // chinelo
+  ctx.restore();
+  if (isMe) { ctx.strokeStyle = '#ffd23b'; ctx.lineWidth = 2; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.arc(0, 0, 26, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); }
+  ctx.restore();
+  ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.font = 'bold 12px sans-serif';
+  const label = (p.level && p.level > 1 ? 'Lv' + p.level + ' ' : '') + p.name;
+  ctx.strokeStyle = '#000'; ctx.lineWidth = 3; ctx.strokeText(label, sx, sy - 32); ctx.fillText(label, sx, sy - 32);
+  const maxHp = p.maxHp || 100;
+  ctx.fillStyle = '#000'; ctx.fillRect(sx - 20, sy - 28, 40, 5);
+  ctx.fillStyle = p.hp > maxHp * 0.5 ? '#4ade5f' : (p.hp > maxHp * 0.25 ? '#ffb03b' : '#ff3b52');
+  ctx.fillRect(sx - 20, sy - 28, 40 * Math.max(0, p.hp / maxHp), 5);
+}
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+function shade(hsl, amt) {
+  const m = hsl.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+  if (!m) return hsl;
+  let l = Math.max(0, Math.min(100, +m[3] + amt));
+  return `hsl(${m[1]}, ${m[2]}%, ${l}%)`;
+}
+
+const ZOOM = 0.72; // câmera equilibrada: vê o cômodo ao redor sem afastar demais
+function draw() {
+  animTime += 1 / 60;
+
+  // ---- interpola posições (movimento fluido entre updates do servidor) ----
+  for (const id in render) {
+    const r = render[id];
+    if (r.tx !== undefined) { r.x += (r.tx - r.x) * 0.25; r.y += (r.ty - r.y) * 0.25; }
+  }
+  // posição interpolada do "eu" para a câmera
+  const meRaw = state.players.find(p => p.id === myId);
+  const meR = meRaw && render[myId] ? render[myId] : null;
+  const meX = meR ? meR.x : (meRaw ? meRaw.x : world.w / 2);
+  const meY = meR ? meR.y : (meRaw ? meRaw.y : world.h / 2);
+
+  const viewW = W / ZOOM, viewH = H / ZOOM;
+  let camX = meX - viewW / 2;
+  let camY = meY - viewH / 2;
+  // clamp: não mostra além das bordas; centraliza se o mundo é menor que a viewport
+  if (world.w < viewW) camX = (world.w - viewW) / 2;
+  else camX = Math.max(0, Math.min(world.w - viewW, camX));
+  if (world.h < viewH) camY = (world.h - viewH) / 2;
+  else camY = Math.max(0, Math.min(world.h - viewH, camY));
+  if (shake > 0) { camX += (Math.random() - 0.5) * shake; camY += (Math.random() - 0.5) * shake; shake *= 0.85; if (shake < 0.3) shake = 0; }
+
+  const me = meRaw; // alias p/ o resto do código (dados: hp, weapon, etc.)
+
+  // limpa em coordenadas de tela
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.fillStyle = '#0a0a10'; ctx.fillRect(0, 0, W, H);
+  ctx.setTransform(DPR * ZOOM, 0, 0, DPR * ZOOM, 0, 0);
+
+  // ---- piso base ----
+  ctx.fillStyle = gameMap.floor; ctx.fillRect(-camX, -camY, world.w, world.h);
+
+  // ---- cômodos da casa (cor + rótulo) ----
+  if (gameMap.rooms) for (const rm of gameMap.rooms) {
+    ctx.fillStyle = rm.color;
+    ctx.fillRect(rm.x - camX, rm.y - camY, rm.w, rm.h);
+    // piso em ladrilho sutil
+    ctx.strokeStyle = 'rgba(0,0,0,.08)'; ctx.lineWidth = 1;
+    for (let lx = rm.x; lx < rm.x + rm.w; lx += 40) { ctx.beginPath(); ctx.moveTo(lx - camX, rm.y - camY); ctx.lineTo(lx - camX, rm.y + rm.h - camY); ctx.stroke(); }
+    for (let ly = rm.y; ly < rm.y + rm.h; ly += 40) { ctx.beginPath(); ctx.moveTo(rm.x - camX, ly - camY); ctx.lineTo(rm.x + rm.w - camX, ly - camY); ctx.stroke(); }
+    // rótulo do cômodo
+    ctx.fillStyle = 'rgba(255,255,255,.32)';
+    ctx.font = 'bold 26px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(rm.label, rm.x + rm.w / 2 - camX, rm.y + 34 - camY);
+  }
+
+  const tile = 80;
+  // linhas de grade neon suaves (leve, por cima de tudo)
+  ctx.strokeStyle = 'rgba(120,180,255,.04)'; ctx.lineWidth = 1;
+  for (let x = 0; x <= world.w; x += tile) { ctx.beginPath(); ctx.moveTo(x - camX, -camY); ctx.lineTo(x - camX, world.h - camY); ctx.stroke(); }
+  for (let y = 0; y <= world.h; y += tile) { ctx.beginPath(); ctx.moveTo(-camX, y - camY); ctx.lineTo(world.w - camX, y - camY); ctx.stroke(); }
+
+  // poças de sangue
+  for (let i = decals.length - 1; i >= 0; i--) {
+    const d = decals[i]; if (d.r < d.maxR) d.r += 1;
+    ctx.fillStyle = 'rgba(140,10,20,.75)'; ctx.beginPath(); ctx.arc(d.x - camX, d.y - camY, d.r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(180,20,30,.6)'; ctx.beginPath(); ctx.arc(d.x - camX - d.r * 0.3, d.y - camY, d.r * 0.5, 0, Math.PI * 2); ctx.fill();
+    d.life -= 0.0015; if (d.life <= 0) decals.splice(i, 1);
+  }
+  if (decals.length > 40) decals.splice(0, decals.length - 40);
+
+  // ---- LINHA DE MIRA GUIA ----
+  if (me && me.alive) {
+    let gx = meX, gy = meY;
+    const stepX = Math.cos(myAngle) * 12, stepY = Math.sin(myAngle) * 12;
+    let steps = 0;
+    while (steps < 130) {
+      gx += stepX; gy += stepY; steps++;
+      if (gx < 0 || gy < 0 || gx > world.w || gy > world.h) break;
+      if (wallAt(gx, gy)) break;
+    }
+    ctx.strokeStyle = 'rgba(255,210,59,.5)'; ctx.lineWidth = 2; ctx.setLineDash([10, 8]);
+    ctx.beginPath(); ctx.moveTo(meX - camX, meY - camY); ctx.lineTo(gx - camX, gy - camY); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.strokeStyle = 'rgba(255,210,59,.8)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(gx - camX, gy - camY, 6, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(gx - camX - 9, gy - camY); ctx.lineTo(gx - camX + 9, gy - camY);
+    ctx.moveTo(gx - camX, gy - camY - 9); ctx.lineTo(gx - camX, gy - camY + 9); ctx.stroke();
+  }
+
+  // ---- paredes gamificadas (bloco 3D com topo neon) ----
+  for (const wl of gameMap.walls) {
+    const x = wl.x - camX, y = wl.y - camY;
+    // sombra projetada
+    ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(x + 6, y + 6, wl.w, wl.h);
+    // corpo
+    ctx.fillStyle = '#3a3a4e'; ctx.fillRect(x, y, wl.w, wl.h);
+    // topo iluminado
+    ctx.fillStyle = '#565673'; ctx.fillRect(x, y, wl.w, 8);
+    // linha neon na borda superior
+    ctx.strokeStyle = 'rgba(120,180,255,.5)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + wl.w, y); ctx.stroke();
+    // contorno
+    ctx.strokeStyle = '#22222e'; ctx.lineWidth = 2; ctx.strokeRect(x, y, wl.w, wl.h);
+  }
+
+  // borda do mundo
+  ctx.strokeStyle = '#ff3b52'; ctx.lineWidth = 5; ctx.strokeRect(-camX, -camY, world.w, world.h);
+
+  // muzzle flash
+  for (let i = muzzles.length - 1; i >= 0; i--) {
+    const m2 = muzzles[i]; m2.life -= 0.2;
+    if (m2.life <= 0) { muzzles.splice(i, 1); continue; }
+    const fx = m2.x + Math.cos(m2.angle) * 28 - camX, fy = m2.y + Math.sin(m2.angle) * 28 - camY;
+    ctx.fillStyle = `rgba(255,220,120,${m2.life})`;
+    ctx.beginPath(); ctx.arc(fx, fy, 8 * m2.life + 3, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // ---- BALAS (visual próprio por arma) ----
+  for (const b of state.bullets) {
+    const bx = b.x - camX, by = b.y - camY, a = b.a || 0, wpn = b.w || 'chinelo';
+    ctx.save(); ctx.translate(bx, by); ctx.rotate(a);
+    if (b.wave) {
+      // GRITO DO VADO: ondas sonoras concêntricas expandindo, semi-transparentes
+      ctx.rotate(-a);
+      const phase2 = (b.x + b.y) * 0.05; // varia por posição pra dar movimento
+      for (let k = 0; k < 4; k++) {
+        const rr = 8 + k * 12 + (Math.sin(animTime * 8 + phase2) * 4);
+        const alpha = (0.8 - k * 0.18);
+        ctx.strokeStyle = `rgba(127,224,255,${alpha})`;
+        ctx.lineWidth = 3.5 - k * 0.5;
+        // leque na direção do disparo (arco de ~120°)
+        ctx.beginPath(); ctx.arc(0, 0, rr, a - 1.0, a + 1.0); ctx.stroke();
+      }
+      // núcleo brilhante
+      ctx.fillStyle = 'rgba(180,240,255,.95)';
+      ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(127,224,255,.4)';
+      ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill();
+    } else if (wpn === 'espada') {
+      // risco dourado longo e afiado
+      const grad = ctx.createLinearGradient(-30, 0, 12, 0);
+      grad.addColorStop(0, 'rgba(255,210,59,0)'); grad.addColorStop(1, 'rgba(255,240,150,.95)');
+      ctx.strokeStyle = grad; ctx.lineWidth = 5; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(-30, 0); ctx.lineTo(12, 0); ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(12,0); ctx.lineTo(4,-4); ctx.lineTo(4,4); ctx.fill();
+    } else if (wpn === 'coco') {
+      // bolota marrom com "cheiro"
+      ctx.fillStyle = '#6b4423'; ctx.beginPath(); ctx.arc(0,0,6,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#8a5a2b'; ctx.beginPath(); ctx.arc(-1.5,-1.5,3,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle = 'rgba(150,200,80,.5)'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.arc(0,0,9+Math.sin(animTime*20)*2,0,Math.PI*2); ctx.stroke();
+    } else if (wpn === 'escova') {
+      // tracinho rápido rosa/vermelho
+      ctx.strokeStyle = 'rgba(255,90,120,.9)'; ctx.lineWidth = 3; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(-14,0); ctx.lineTo(4,0); ctx.stroke();
+    } else {
+      // chinelo girando
+      ctx.rotate(animTime * 25);
+      ctx.fillStyle = '#ff5fa2';
+      roundRect(-7, -4, 14, 8, 4); ctx.fill();
+      ctx.strokeStyle = '#c02f6e'; ctx.lineWidth = 1.5; roundRect(-7,-4,14,8,4); ctx.stroke();
+      ctx.fillStyle = '#c02f6e'; ctx.beginPath(); ctx.arc(0,0,1.6,0,Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // ---- aura super sayajin (desenhada sob os jogadores) ----
+  for (let i = auras.length - 1; i >= 0; i--) {
+    const au = auras[i]; au.life -= 0.02;
+    if (au.life <= 0) { auras.splice(i, 1); continue; }
+    const rp = render[au.id]; if (!rp) continue;
+    const ax = rp.x - camX, ay = rp.y - camY;
+    const pulse = 30 + Math.sin(animTime * 20) * 6;
+    // halo dourado
+    const g = ctx.createRadialGradient(ax, ay, 5, ax, ay, pulse + 20);
+    g.addColorStop(0, `rgba(255,230,120,${0.5 * au.life})`);
+    g.addColorStop(0.6, `rgba(255,180,40,${0.3 * au.life})`);
+    g.addColorStop(1, 'rgba(255,180,40,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(ax, ay, pulse + 20, 0, Math.PI * 2); ctx.fill();
+    // labaredas subindo
+    for (let f = 0; f < 8; f++) {
+      const fa = (f / 8) * Math.PI * 2 + animTime * 3;
+      const fr = pulse + Math.sin(animTime * 25 + f) * 8;
+      const fx = ax + Math.cos(fa) * fr, fy = ay + Math.sin(fa) * fr - 6;
+      ctx.fillStyle = `rgba(255,${200 + Math.floor(Math.random()*55)},60,${0.6 * au.life})`;
+      ctx.beginPath(); ctx.moveTo(fx, fy);
+      ctx.lineTo(fx - 5, fy + 14); ctx.lineTo(fx + 5, fy + 14); ctx.closePath(); ctx.fill();
+    }
+  }
+
+  // ---- jogadores (posição interpolada) ----
+  for (const p of state.players) {
+    if (!p.alive) continue;
+    const rp = render[p.id] || { x: p.x, y: p.y };
+    const pv = prevPos[p.id];
+    p.moving = pv ? (Math.abs(pv.x - rp.x) > 0.4 || Math.abs(pv.y - rp.y) > 0.4) : false;
+    prevPos[p.id] = { x: rp.x, y: rp.y };
+    drawBean(rp.x - camX, rp.y - camY, p, p.id === myId);
+  }
+
+  // partículas
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const pt = particles[i];
+    pt.x += pt.vx; pt.y += pt.vy; pt.vy += 0.15; pt.vx *= 0.96; pt.life -= 0.03;
+    if (pt.life <= 0) { particles.splice(i, 1); continue; }
+    ctx.fillStyle = pt.type === 'blood' ? `rgba(200,20,30,${pt.life})` : `rgba(255,220,120,${pt.life})`;
+    ctx.beginPath(); ctx.arc(pt.x - camX, pt.y - camY, pt.r * pt.life, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // reset da transform para o HUD (já é DOM, mas garante estado limpo)
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+  const sorted = [...state.players].sort((a, b) => b.kills - a.kills).slice(0, 5);
+  document.getElementById('scoreboard').innerHTML =
+    sorted.map(p => `${p.id === myId ? '▶ ' : ''}${p.name}: ${p.kills}💀`).join('<br>') || 'Placar';
+  // timer da rodada (mm:ss)
+  let timerStr = '';
+  if (state.timeLeft != null && state.phase === 'playing') {
+    const mm = Math.floor(state.timeLeft / 60), ss = state.timeLeft % 60;
+    timerStr = `<br>⏱️ ${mm}:${ss.toString().padStart(2,'0')}`;
+  }
+  document.getElementById('status').innerHTML = me
+    ? `HP: ${Math.max(0, me.hp)}<br>Kills: ${me.kills}<br><b>💰 ${me.points} pts</b>${timerStr}` : 'Conectando...';
+  // tela de morte só durante o jogo (não na votação, e não se banido)
+  document.getElementById('dead').style.display = (me && !me.alive && state.phase === 'playing' && !me.banned) ? 'flex' : 'none';
+
+  requestAnimationFrame(draw);
+}
+
+// checagem de parede no cliente (para a linha de mira)
+function wallAt(x, y) {
+  for (const wl of gameMap.walls) {
+    if (x > wl.x && x < wl.x + wl.w && y > wl.y && y < wl.y + wl.h) return true;
+  }
+  return false;
+}
+draw();
+</script>
+</body>
+</html>
