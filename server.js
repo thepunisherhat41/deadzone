@@ -6,7 +6,7 @@ const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 
 const PORT = process.env.PORT || 3000;
-const BUILD = 'beta-0.6.0';
+const BUILD = 'beta-0.8.0';
 
 // Servidor estático mínimo e previsível. HTML sempre no-store para evitar celular preso em deploy antigo.
 const server = http.createServer((req, res) => {
@@ -69,6 +69,7 @@ const UTILITIES = {
 const SKINS = {
   bean: { name: 'Clássico', icon: 'bean', cost: 0, description: 'O personagem clássico do DEADZONE.' },
   gravida: { name: 'Gestante', icon: 'pregnant', cost: 15, description: 'Mulher negra grávida em estilo cartunesco.' },
+  bubu: { name: 'Bubu', icon: 'bubu', cost: 20, description: 'Mulher branca grávida. Libera o especial Dracarys da Bubu.' },
   capivara: { name: 'Capivara', icon: 'capybara', cost: 15, description: 'Capivara dos Alpes. Mesmas hitbox e velocidade dos demais.' }
 };
 
@@ -77,6 +78,12 @@ const WEAPONS = {
     name: 'Chinelo', emoji: '🩴', icon: 'chinelo', cost: 0,
     damage: 24, cooldown: 320, speed: 15, range: 520, pellets: 1, hitRadius: 19,
     tint: '#ff5fa2', description: 'Arremesso médio, simples e confiável.'
+  },
+  dracarys: {
+    name: 'Dracarys da Bubu', emoji: '🔥', icon: 'dracarys', cost: 0,
+    damage: 12, cooldown: 150, speed: 12.5, range: 250, pellets: 5, spread: 0.20, hitRadius: 24,
+    tint: '#ff8748', fire: true,
+    description: 'Sopro curto de fogo em cone. Especial liberado com a Bubu.'
   },
   peido: {
     name: 'Peido do Pepeu', emoji: '💨', icon: 'fart', cost: 20,
@@ -480,6 +487,7 @@ function buySkin(pl, skinKey, ws) {
   if (!skin || skinKey === 'bean') return;
   if (pl.ownedSkins[skinKey]) {
     pl.skin = skinKey;
+    if (skinKey === 'bubu') pl.owned.dracarys = true;
     ws.send(JSON.stringify({ type: 'shopResult', ok: true, kind: 'skin', skin: skinKey, message: `🧍 ${skin.name} equipado.` }));
     return;
   }
@@ -490,6 +498,12 @@ function buySkin(pl, skinKey, ws) {
   pl.points -= skin.cost;
   pl.ownedSkins[skinKey] = true;
   pl.skin = skinKey;
+  if (skinKey === 'bubu') {
+    pl.owned.dracarys = true;
+    pl.weapon = 'dracarys';
+    ws.send(JSON.stringify({ type: 'shopResult', ok: true, kind: 'skin', skin: skinKey, message: `🔥 ${skin.name} comprada! Dracarys da Bubu liberado e equipado.` }));
+    return;
+  }
   ws.send(JSON.stringify({ type: 'shopResult', ok: true, kind: 'skin', skin: skinKey, message: `🧍 Personagem ${skin.name} comprado e equipado.` }));
 }
 
@@ -566,7 +580,7 @@ function tryAttack(pl) {
     const spawnOffset = w.wave ? 30 : 26;
     bullets.push({
       id: nextBulletId++, owner: pl.id, wpn: pl.weapon, wave: !!w.wave, pierce: !!w.pierce,
-      gas: !!w.gas, possessed: !!w.possessed,
+      gas: !!w.gas, possessed: !!w.possessed, fire: !!w.fire,
       x: pl.x + Math.cos(a) * spawnOffset,
       y: pl.y + Math.sin(a) * spawnOffset,
       vx: Math.cos(a) * w.speed, vy: Math.sin(a) * w.speed,
@@ -841,7 +855,7 @@ setInterval(() => {
       level: p.level, owned: p.owned, color: p.color, banned: p.banned, spectating: isSpectating(p),
       armor: p.armor, bombs: p.bombs, skin: p.skin, ownedSkins: p.ownedSkins
     })),
-    bullets: bullets.map(b => ({ x: Math.round(b.x), y: Math.round(b.y), a: +Math.atan2(b.vy, b.vx).toFixed(2), w: b.wpn, wave: b.wave ? 1 : 0, gas: b.gas ? 1 : 0, possessed: b.possessed ? 1 : 0, progress: Math.max(0, Math.min(1, b.dist / b.range)) })),
+    bullets: bullets.map(b => ({ x: Math.round(b.x), y: Math.round(b.y), a: +Math.atan2(b.vy, b.vx).toFixed(2), w: b.wpn, wave: b.wave ? 1 : 0, gas: b.gas ? 1 : 0, possessed: b.possessed ? 1 : 0, fire: b.fire ? 1 : 0, progress: Math.max(0, Math.min(1, b.dist / b.range)) })),
     bombs: thrownBombs.map(b => ({ id: b.id, x: Math.round(b.x), y: Math.round(b.y), a: +Math.atan2(b.vy, b.vx).toFixed(2), fuse: Math.max(0, b.fuseAt - Date.now()) })),
     pickups: healthPickups.filter(h => !h.respawnAt).map(h => ({ id: h.id, x: Math.round(h.x), y: Math.round(h.y), heal: h.heal, kind: 'churrasco' })),
     events,
