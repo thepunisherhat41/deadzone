@@ -6,7 +6,7 @@ const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 
 const PORT = process.env.PORT || 3000;
-const BUILD = 'beta-0.8.0';
+const BUILD = 'beta-0.6.1-rebuild';
 
 // Servidor estático mínimo e previsível. HTML sempre no-store para evitar celular preso em deploy antigo.
 const server = http.createServer((req, res) => {
@@ -69,7 +69,7 @@ const UTILITIES = {
 const SKINS = {
   bean: { name: 'Clássico', icon: 'bean', cost: 0, description: 'O personagem clássico do DEADZONE.' },
   gravida: { name: 'Gestante', icon: 'pregnant', cost: 15, description: 'Mulher negra grávida em estilo cartunesco.' },
-  bubu: { name: 'Bubu', icon: 'bubu', cost: 20, description: 'Mulher branca grávida. Libera o especial Dracarys da Bubu.' },
+  bubu: { name: 'Bubu', icon: 'bubu', cost: 20, description: 'Mulher branca grávida. Seu poder exclusivo é o Dracarys da Bubu.' },
   capivara: { name: 'Capivara', icon: 'capybara', cost: 15, description: 'Capivara dos Alpes. Mesmas hitbox e velocidade dos demais.' }
 };
 
@@ -81,9 +81,9 @@ const WEAPONS = {
   },
   dracarys: {
     name: 'Dracarys da Bubu', emoji: '🔥', icon: 'dracarys', cost: 0,
-    damage: 12, cooldown: 150, speed: 12.5, range: 250, pellets: 5, spread: 0.20, hitRadius: 24,
-    tint: '#ff8748', fire: true,
-    description: 'Sopro curto de fogo em cone. Especial liberado com a Bubu.'
+    damage: 11, cooldown: 190, speed: 12, range: 245, pellets: 5, spread: 0.20, hitRadius: 22,
+    tint: '#ff8c42', fire: true, hiddenShop: true, specialSkin: 'bubu',
+    description: 'Sopro curto de fogo em cone. Poder exclusivo da Bubu.'
   },
   peido: {
     name: 'Peido do Pepeu', emoji: '💨', icon: 'fart', cost: 20,
@@ -390,7 +390,7 @@ wss.on('connection', (ws, req) => {
         }
         break;
       case 'switchWeapon':
-        if (WEAPONS[msg.weapon] && pl.owned[msg.weapon]) pl.weapon = msg.weapon;
+        if (WEAPONS[msg.weapon] && pl.owned[msg.weapon] && (!WEAPONS[msg.weapon].specialSkin || pl.skin === WEAPONS[msg.weapon].specialSkin)) pl.weapon = msg.weapon;
         break;
       case 'buy':
         buyWeapon(pl, msg.weapon, ws);
@@ -436,7 +436,7 @@ wss.on('connection', (ws, req) => {
 
 function buyWeapon(pl, weaponKey, ws) {
   const w = WEAPONS[weaponKey];
-  if (!w) return;
+  if (!w || w.hiddenShop) return;
   if (pl.owned[weaponKey]) return;               // já tem
   if (pl.points < w.cost) {                       // sem pontos
     ws.send(JSON.stringify({ type: 'buyResult', ok: false, reason: 'pontos insuficientes' }));
@@ -482,13 +482,24 @@ function buyUtility(pl, itemKey, ws) {
   }
 }
 
+function equipSkin(pl, skinKey) {
+  if (!SKINS[skinKey] || !pl.ownedSkins[skinKey]) return false;
+  pl.skin = skinKey;
+  if (skinKey === 'bubu') {
+    pl.owned.dracarys = true;
+    pl.weapon = 'dracarys';
+  } else if (pl.weapon === 'dracarys') {
+    pl.weapon = 'chinelo';
+  }
+  return true;
+}
+
 function buySkin(pl, skinKey, ws) {
   const skin = SKINS[skinKey];
   if (!skin || skinKey === 'bean') return;
   if (pl.ownedSkins[skinKey]) {
-    pl.skin = skinKey;
-    if (skinKey === 'bubu') pl.owned.dracarys = true;
-    ws.send(JSON.stringify({ type: 'shopResult', ok: true, kind: 'skin', skin: skinKey, message: `🧍 ${skin.name} equipado.` }));
+    equipSkin(pl, skinKey);
+    ws.send(JSON.stringify({ type: 'shopResult', ok: true, kind: 'skin', skin: skinKey, message: skinKey === 'bubu' ? '🔥 Bubu equipada. Dracarys liberado.' : `🧍 ${skin.name} equipado.` }));
     return;
   }
   if (pl.points < skin.cost) {
@@ -497,18 +508,12 @@ function buySkin(pl, skinKey, ws) {
   }
   pl.points -= skin.cost;
   pl.ownedSkins[skinKey] = true;
-  pl.skin = skinKey;
-  if (skinKey === 'bubu') {
-    pl.owned.dracarys = true;
-    pl.weapon = 'dracarys';
-    ws.send(JSON.stringify({ type: 'shopResult', ok: true, kind: 'skin', skin: skinKey, message: `🔥 ${skin.name} comprada! Dracarys da Bubu liberado e equipado.` }));
-    return;
-  }
-  ws.send(JSON.stringify({ type: 'shopResult', ok: true, kind: 'skin', skin: skinKey, message: `🧍 Personagem ${skin.name} comprado e equipado.` }));
+  equipSkin(pl, skinKey);
+  ws.send(JSON.stringify({ type: 'shopResult', ok: true, kind: 'skin', skin: skinKey, message: skinKey === 'bubu' ? '🔥 Bubu comprada e equipada. Dracarys liberado!' : `🧍 Personagem ${skin.name} comprado e equipado.` }));
 }
 
 function switchSkin(pl, skinKey) {
-  if (SKINS[skinKey] && pl.ownedSkins[skinKey]) pl.skin = skinKey;
+  equipSkin(pl, skinKey);
 }
 
 function throwBomb(pl, ws) {
@@ -567,7 +572,7 @@ function handleChat(pl, text) {
 
 function tryAttack(pl) {
   const w = WEAPONS[pl.weapon];
-  if (!w) return;
+  if (!w || (w.specialSkin && pl.skin !== w.specialSkin)) return;
   const now = Date.now();
   if (now - pl.lastShot < w.cooldown) return;
   pl.lastShot = now;
