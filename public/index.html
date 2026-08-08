@@ -40,11 +40,11 @@
   #start button::after { content:''; position:absolute; top:-40%; left:-45%; width:28%; height:180%; transform:rotate(24deg); background:linear-gradient(90deg,transparent,rgba(255,255,255,.48),transparent); animation:buttonShine 2.7s ease-in-out infinite; }
   #start button:active { transform: translateY(5px); box-shadow: 0 0 0 #a01828; }
   #start .lvlnote { color: #9fc4e8; font-size: 12px; margin-top: 10px; min-height:15px; }
-  #startStatus { min-height: 18px; margin-top: 10px; color:#dce8f4; font-size:12px; font-weight:800; text-shadow:0 2px 6px #000; }
-  #startStatus.warn { color:#ffd79a; }
-  #startStatus.ok { color:#a7ffb7; }
-  #playBtn[disabled] { opacity:.75; filter:saturate(.85); }
-  #playBtn.loading::before { content:''; display:inline-block; width:15px; height:15px; margin-right:10px; border-radius:50%; border:2px solid rgba(255,255,255,.28); border-top-color:#fff; vertical-align:-2px; animation: spin .7s linear infinite; }
+  #joinStatus { color:#dce8f4; font-size:11px; font-weight:800; margin-top:9px; min-height:16px; text-shadow:0 2px 5px #000; }
+  #joinStatus.warn { color:#ffd08a; }
+  #joinStatus.ok { color:#a7ffb5; }
+  #playBtn[disabled] { opacity:.72; }
+  #playBtn.loading::before { content:''; display:inline-block; width:14px; height:14px; margin-right:9px; border-radius:50%; border:2px solid rgba(255,255,255,.25); border-top-color:#fff; vertical-align:-2px; animation:joinSpin .7s linear infinite; }
 
   /* batalha animada da capa */
   #startBattle { position:absolute; inset:0; z-index:3; pointer-events:none; overflow:hidden; }
@@ -95,7 +95,7 @@
   @keyframes bombFly { 0% { transform:translate(0,0) rotate(0); opacity:0; } 8% { opacity:1; } 48% { transform:translate(42vw,-16vh) rotate(420deg); } 72% { transform:translate(67vw,12vh) rotate(740deg); opacity:1; } 76%,100% { transform:translate(69vw,13vh) rotate(760deg); opacity:0; } }
   @keyframes coverBoom { 0%,73% { opacity:0; transform:scale(.2); box-shadow:0 0 0 0 rgba(255,210,59,.55),0 0 0 rgba(255,77,52,.6); } 76% { opacity:1; transform:scale(1); box-shadow:0 0 0 8px rgba(255,210,59,.45),0 0 50px 12px rgba(255,77,52,.78); } 88% { opacity:.28; transform:scale(3.5); box-shadow:0 0 0 34px rgba(255,210,59,0),0 0 70px 25px rgba(255,77,52,0); } 100% { opacity:0; } }
   @keyframes pickupFloat { 0%,100% { transform:translateY(0) rotate(-2deg); } 50% { transform:translateY(-12px) rotate(2deg); } }
-  @keyframes spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+  @keyframes joinSpin { to { transform:rotate(360deg); } }
 
   @media (max-width:820px), (pointer:coarse) {
     .startContent { width:94vw; padding:18px 10px; transform:translateY(-1vh); }
@@ -133,27 +133,11 @@
   }
 
   #hud { position: fixed; top: max(12px, env(safe-area-inset-top)); left: 12px; right: 12px; display: flex; justify-content: space-between; color: #fff; font-size: 13px; z-index: 10; pointer-events: none; }
-  #scoreboard, #status { background: linear-gradient(180deg,rgba(20,22,32,.88),rgba(8,10,16,.78)); padding: 10px 14px; border-radius: 14px; line-height: 1.55; border: 1px solid var(--dz-border); box-shadow: 0 8px 26px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.05); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+  #scoreboard, #status { background: linear-gradient(180deg,rgba(18,23,32,.92),rgba(7,10,16,.88)); padding: 10px 14px; border-radius: 14px; line-height: 1.55; border: 1px solid rgba(127,224,255,.14); box-shadow: 0 8px 26px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.05); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
   #scoreboard { min-width: 150px; }
   #status { min-width: 110px; text-align: right; margin-right: 102px; }
   #status b { color: var(--dz-yellow); }
   .hudDim { opacity: .62; font-size: .88em; }
-  .hudBoxTitle { color:#9fc4e8; font-size:10px; font-weight:950; letter-spacing:1.5px; margin-bottom:6px; text-transform:uppercase; }
-  .hudScoreList { display:flex; flex-direction:column; gap:4px; }
-  .hudScoreLine { display:grid; grid-template-columns: 18px minmax(0,1fr) auto; align-items:center; gap:7px; color:#fff; font-size:12px; }
-  .hudScoreLine .rank { color:#ffd23b; font-weight:950; text-align:center; }
-  .hudScoreLine .name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .hudScoreLine .kills { color:#dce8f4; font-weight:900; }
-  .hudScoreLine.me .name { color:#ffd23b; font-weight:950; }
-  .hudChipWrap { display:flex; flex-wrap:wrap; gap:6px; }
-  .hudChip { display:inline-flex; align-items:center; gap:5px; padding:5px 8px; border-radius:999px; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.08); color:#fff; font-size:11px; font-weight:900; }
-  .hudChip b { color:inherit; }
-  .hudChip.hp { background:rgba(255,59,82,.14); border-color:rgba(255,59,82,.22); }
-  .hudChip.armor { background:rgba(127,224,255,.13); border-color:rgba(127,224,255,.22); }
-  .hudChip.money { background:rgba(255,210,59,.14); border-color:rgba(255,210,59,.24); color:#ffe897; }
-  .hudChip.utility { background:rgba(170,140,255,.12); border-color:rgba(170,140,255,.18); }
-  .hudChip.round { background:rgba(255,255,255,.06); }
-  .hudSubRow { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:7px; color:#aeb7c7; font-size:11px; font-weight:800; }
 
   #levelBadge { position: fixed; top: max(10px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 11; background: linear-gradient(180deg,#ffe36f,#ffc21f 72%,#d89400); color: #241800; font-weight: 950; padding: 8px 17px 9px; border-radius: 15px; font-size: 14px; box-shadow: 0 5px 0 #9c6b00, 0 10px 28px rgba(0,0,0,.28); text-align: center; border: 1px solid rgba(255,255,255,.38); min-width: 132px; }
   #levelBadge small { display: block; font-size: 10px; font-weight: 800; opacity: .78; }
@@ -182,20 +166,21 @@
   #weapons { position: fixed; bottom: 194px; right: 30px; z-index: 10; display: flex; gap: 7px; flex-wrap: wrap; justify-content: flex-end; max-width: 360px; transition: opacity .2s; }
   .wbtn { min-height: 44px; padding: 7px 11px 7px 8px; border-radius: 12px; border: 1px solid rgba(255,255,255,.12); background: rgba(8,10,16,.78); color: #fff; font-size: 12px; font-weight: 850; display: flex; align-items: center; gap: 7px; box-shadow: 0 5px 16px rgba(0,0,0,.22); backdrop-filter: blur(8px); }
   .wbtn .weaponIcon { width: 28px; height: 28px; flex: 0 0 28px; }
+  .wbtn .wname { max-width:110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .wbtn.active { border-color: var(--dz-yellow); background: linear-gradient(180deg,rgba(255,210,59,.24),rgba(70,48,0,.62)); color: var(--dz-yellow); box-shadow: 0 0 0 1px rgba(255,210,59,.2),0 5px 18px rgba(0,0,0,.28); }
   .wbtn.locked { opacity: .34; filter: grayscale(.5); }
   .weaponIcon { display: inline-flex; align-items: center; justify-content: center; }
   .weaponIcon svg { width: 100%; height: 100%; display: block; overflow: visible; filter: drop-shadow(0 2px 2px rgba(0,0,0,.35)); }
 
   /* Loja: header fixo + área de scroll isolada para Android/iOS */
-  #shop { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(4,6,12,.82); z-index: 45; padding: 18px; backdrop-filter: blur(8px); overflow: hidden; }
+  #shop { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(4,6,12,.88); z-index: 45; padding: 18px; backdrop-filter: blur(6px); overflow: hidden; touch-action:pan-y; }
   #shopBox { background: linear-gradient(180deg,#1b1e2a,#0f111a); border: 1px solid rgba(255,59,82,.8); border-radius: 20px; width: min(460px,94vw); height:min(760px,92dvh); max-height:92dvh; display:flex; flex-direction:column; overflow:hidden; box-shadow: 0 24px 70px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.04) inset; }
   #shopHeader { flex:0 0 auto; position:relative; padding:17px 18px 11px; border-bottom:1px solid rgba(255,255,255,.08); background:linear-gradient(180deg,#1c1f2c,#151823); }
   .shopEyebrow { color:#8ea0bb; font-size:9px; font-weight:900; letter-spacing:1.8px; text-align:center; }
   #shopBox h2 { color: var(--dz-red); text-align: center; margin:1px 0 4px; letter-spacing: 3px; font-size: 27px; }
   #shopPts { color: var(--dz-yellow); text-align: center; font-weight: 900; font-size:13px; }
   #shopCloseTop { position:absolute; top:12px; right:12px; width:36px; height:36px; border-radius:50%; border:1px solid rgba(255,255,255,.14); background:#292c37; color:#fff; font-size:17px; font-weight:900; }
-  #shopScroll { flex:1 1 auto; min-height:0; overflow-y:auto; overflow-x:hidden; padding:10px 14px calc(14px + env(safe-area-inset-bottom)); touch-action:pan-y; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; scrollbar-gutter:stable; }
+  #shopScroll { flex:1 1 0; min-height:0; height:0; overflow-y:scroll; overflow-x:hidden; padding:10px 14px calc(82px + env(safe-area-inset-bottom)); touch-action:pan-y; -webkit-overflow-scrolling:touch; overscroll-behavior-y:contain; scrollbar-gutter:stable; }
   #shopScroll::-webkit-scrollbar { width:5px; } #shopScroll::-webkit-scrollbar-thumb { background:#4b5161; border-radius:8px; }
   .shopItem { display: flex; justify-content: space-between; align-items: center; gap: 12px; background: linear-gradient(180deg,#202330,#171923); border: 1px solid rgba(255,255,255,.08); border-radius: 14px; padding: 11px 12px; margin-bottom: 9px; touch-action:pan-y; }
   .shopItem .info { color: #fff; display: flex; align-items: center; gap: 10px; min-width: 0; touch-action:pan-y; }
@@ -266,19 +251,15 @@
   /* ============ MOBILE FIRST BETA ============ */
   @media (max-width: 820px), (pointer: coarse) {
     body { background:#080a10; }
-    #hud { top:calc(max(8px, env(safe-area-inset-top)) + 60px); left:8px; right:8px; display:grid; grid-template-columns:1fr; gap:6px; align-items:stretch; }
-    #scoreboard, #status { font-size:10px; padding:8px 9px; line-height:1.3; border-radius:12px; min-height:unset; width:100%; margin:0; }
-    #status { order:1; }
-    #scoreboard { order:2; }
-    #levelBadge { top:max(8px, env(safe-area-inset-top)); padding:5px 9px 6px; font-size:11px; border-radius:11px; min-width:118px; box-shadow:0 4px 0 #9c6b00,0 7px 18px rgba(0,0,0,.25); }
-    #levelBadge small { font-size:8px; } #xpBar { width:92px; height:4px; margin-top:3px; }
+    #scoreboard, #status, .iconbtn, .wbtn, .startChip { backdrop-filter:none; -webkit-backdrop-filter:none; }
+    .battleSpeedLines { opacity:.08; }
+    #hud { top:calc(max(8px, env(safe-area-inset-top)) + 56px); left:8px; right:8px; display:block; }
+    #status { position:absolute; top:0; left:0; right:0; width:auto; min-width:0; margin:0; text-align:left; font-size:10px; padding:7px 9px; line-height:1.25; border-radius:11px; min-height:42px; }
+    #scoreboard { position:absolute; top:49px; left:0; width:min(190px,54vw); min-width:0; max-width:none; margin:0; font-size:9px; padding:6px 8px; line-height:1.25; border-radius:10px; }
+    #levelBadge { top:max(8px, env(safe-area-inset-top)); padding:5px 8px 6px; font-size:11px; border-radius:11px; min-width:112px; box-shadow:0 4px 0 #9c6b00,0 7px 18px rgba(0,0,0,.25); }
+    #levelBadge small { font-size:8px; } #xpBar { width:90px; height:4px; margin-top:3px; }
     #netStatus { top:calc(max(8px, env(safe-area-inset-top)) + 48px); font-size:8px; }
-    #topRight { top:max(8px, env(safe-area-inset-top)); right:8px; flex-direction:row; gap:6px; }
-    .hudBoxTitle { font-size:9px; letter-spacing:1.7px; margin-bottom:5px; }
-    .hudScoreLine { font-size:10px; gap:6px; grid-template-columns:14px minmax(0,1fr) auto; }
-    .hudChipWrap { gap:5px; }
-    .hudChip { font-size:9.5px; padding:4px 7px; }
-    .hudSubRow { font-size:9.5px; margin-top:6px; }
+    #topRight { top:max(8px, env(safe-area-inset-top)); right:8px; flex-direction:row; gap:5px; }
     .iconbtn { width:42px; height:42px; padding:0; display:flex; align-items:center; justify-content:center; border-radius:12px; }
     .iconbtn .btnIcon { font-size:19px; } .iconbtn .btnLabel { display:none; }
 
@@ -291,15 +272,15 @@
     #aimHint { display:none; }
 
     /* Dock horizontal: no mobile só aparecem armas que o jogador possui. */
-    #weapons { left:50%; right:auto; transform:translateX(-50%); bottom:128px; width:calc(100vw - 16px); max-width:none; padding:6px; display:flex; flex-wrap:nowrap; justify-content:flex-start; gap:5px; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; touch-action:pan-x; border-radius:14px; background:rgba(8,10,16,.72); border:1px solid rgba(255,255,255,.08); box-shadow:0 8px 24px rgba(0,0,0,.24); }
+    #weapons { left:50%; right:auto; transform:translateX(-50%); bottom:132px; width:calc(100vw - 16px); max-width:none; padding:5px 6px; display:flex; flex-wrap:nowrap; justify-content:flex-start; gap:5px; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; touch-action:pan-x; border-radius:14px; background:rgba(7,10,16,.72); border:1px solid rgba(255,255,255,.08); box-shadow:0 7px 22px rgba(0,0,0,.24); }
     #weapons::-webkit-scrollbar { display:none; }
-    .wbtn { flex:0 0 82px; width:82px; height:62px; min-height:62px; padding:5px 4px; justify-content:center; flex-direction:column; gap:4px; border-radius:12px; scroll-snap-align:center; }
-    .wbtn .weaponIcon { width:28px; height:28px; flex-basis:28px; } .wbtn .wname { display:block; max-width:100%; font-size:9px; line-height:1.05; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .wbtn.locked { opacity:.45; filter:grayscale(.25); }
-    #bombBtn { right:16px; bottom:180px; width:48px; height:48px; z-index:14; }
+    .wbtn { flex:0 0 94px; width:94px; height:58px; min-height:58px; padding:5px 5px; justify-content:center; flex-direction:column; gap:3px; border-radius:11px; scroll-snap-align:center; }
+    .wbtn .weaponIcon { width:28px; height:28px; flex-basis:28px; } .wbtn .wname { display:block; max-width:84px; font-size:8.2px; line-height:1.05; text-align:center; overflow:hidden; white-space:nowrap; }
+    .wbtn.locked { display:none; }
+    #bombBtn { right:16px; bottom:198px; width:48px; height:48px; z-index:14; }
     #bombBtn .bombIcon { width:25px; height:25px; }
 
-    #chatBox { bottom:186px; left:8px; width:200px; max-width:56vw; }
+    #chatBox { bottom:199px; left:8px; width:205px; max-width:58vw; }
     #chatMsgs { font-size:10px; gap:3px; } #chatMsgs div { padding:4px 7px; }
     #chatInputWrap { bottom:calc(10px + env(safe-area-inset-bottom)); width:94%; }
 
@@ -314,12 +295,12 @@
     #shopHeader { padding:calc(10px + env(safe-area-inset-top)) 12px 8px; }
     .shopEyebrow { font-size:8px; } #shopBox h2 { font-size:21px; margin:0 0 2px; } #shopPts { font-size:11px; }
     #shopCloseTop { top:calc(8px + env(safe-area-inset-top)); right:10px; width:34px; height:34px; }
-    #shopScroll { padding:9px 9px calc(84px + env(safe-area-inset-bottom)); overflow-y:scroll; touch-action:pan-y; }
+    #shopScroll { padding:9px 9px calc(90px + env(safe-area-inset-bottom)); overflow-y:scroll; touch-action:pan-y; }
     .shopItem { padding:8px 7px; gap:6px; border-radius:12px; margin-bottom:7px; }
     .shopItem .info { gap:7px; } .shopItem .info .weaponIcon, .shopIcon { width:31px; height:31px; flex-basis:31px; }
     .shopItem .infoText { font-size:13px; } .shopItem .info small { font-size:8.8px; line-height:1.2; }
     .shopItem button { padding:8px 9px; font-size:11px; } .shopSectionTitle { margin:11px 2px 7px; font-size:9.5px; }
-    #shopClose { position:sticky; bottom:0; padding:13px; margin-top:12px; margin-bottom:2px; box-shadow:0 -10px 18px rgba(15,17,26,.4); }
+    #shopClose { position:sticky; bottom:0; padding:13px; margin-top:10px; margin-bottom:2px; box-shadow:0 -10px 22px rgba(15,17,26,.55); }
 
     #spectator { bottom:max(12px, env(safe-area-inset-bottom)); }
     #dead .big { font-size:32px; }
@@ -327,9 +308,9 @@
 
   @media (max-width: 370px) {
     #scoreboard, #status { font-size:8.8px; }
-    #weapons { bottom:124px; }
-    .wbtn { flex-basis:74px; width:74px; height:58px; min-height:58px; }
-    #bombBtn { bottom:172px; width:44px; height:44px; }
+    #weapons { bottom:126px; }
+    .wbtn { flex-basis:86px; width:86px; height:55px; min-height:55px; }
+    #bombBtn { bottom:190px; width:44px; height:44px; }
     #stick { width:102px; height:102px; } #aimStick { width:108px; height:108px; }
   }
 
@@ -399,7 +380,7 @@
     </div>
     <input id="nameInput" maxlength="12" placeholder="Seu nome de guerra">
     <button id="playBtn">JOGAR ▶</button>
-    <div id="startStatus">Digite seu nome e toque em jogar.</div>
+    <div id="joinStatus">Pronto para entrar.</div>
     <div class="lvlnote" id="lvlnote"></div>
   </div>
 </div>
@@ -485,7 +466,8 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 let W, H, DPR = 1;
 function resize() {
-  DPR = Math.min(window.devicePixelRatio || 1, 2); // até 2x pra não pesar demais
+  const mobileDpr = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+  DPR = Math.min(window.devicePixelRatio || 1, mobileDpr ? 1.5 : 2); // mobile prioriza fluidez; desktop mantém mais nitidez
   W = window.innerWidth; H = window.innerHeight;
   canvas.width = W * DPR; canvas.height = H * DPR;
   canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
@@ -511,6 +493,8 @@ let resumePending = false;
 let serverBuild = 'beta';
 let reconnectTimer = null;
 let reconnectDelay = 900;
+let joiningGame = false;
+let joinFallbackTimer = null;
 
 function createSessionToken() {
   try {
@@ -624,10 +608,10 @@ const sound = {
   espada:  () => { noise(0.15,0.075,'bandpass',1700); setTimeout(()=>tone(260,0.07,'triangle',0.06,170),55); },
   // peido: curto, grave e soprado, sem reaproveitar o som de nenhuma arma
   peido:   () => { tone(88,0.26,'sawtooth',0.07,48); noise(0.24,0.08,'lowpass',520); },
-  // dracarys: jato ardente e contínuo
-  dracarys: () => { noise(0.20,0.08,'bandpass',900); tone(220,0.13,'sawtooth',0.08,130); setTimeout(()=>tone(140,0.12,'triangle',0.06,90),40); },
   // Lilika: guincho cartunesco + giro
   lilika:  () => { tone(620,0.12,'square',0.06,980); setTimeout(()=>tone(980,0.12,'triangle',0.055,430),80); noise(0.08,0.025,'bandpass',1800); },
+  // Dracarys da Bubu: jato curto de fogo
+  dracarys: () => { noise(0.18,0.075,'bandpass',900); tone(190,0.14,'sawtooth',0.07,115); },
   heal:    () => { tone(540,0.07,'sine',0.06,720); setTimeout(()=>tone(820,0.09,'sine',0.06,1060),70); },
   bomb:    () => { noise(0.34,0.19,'lowpass',820); tone(82,0.36,'sine',0.16,38); setTimeout(()=>noise(0.18,0.08,'highpass',1500),30); },
   armor:   () => { tone(760,0.07,'square',0.05,560); tone(1080,0.04,'sine',0.04,820); },
@@ -679,3 +663,43 @@ function addDeathPool(x, y) {
 
 function setNetStatus(mode, text) {
   const el = document.getElementById('netStatus'); if (!el) return;
+  el.className = mode; el.textContent = text || (mode === 'connected' ? 'ONLINE' : 'RECONECTANDO...');
+}
+function setJoinStatus(text, mode) {
+  const el = document.getElementById('joinStatus');
+  if (!el) return;
+  el.textContent = text || '';
+  el.className = mode || '';
+}
+function setJoinLoading(on) {
+  const btn = document.getElementById('playBtn');
+  if (!btn) return;
+  btn.disabled = !!on;
+  btn.classList.toggle('loading', !!on);
+  btn.textContent = on ? 'ENTRANDO...' : 'JOGAR ▶';
+}
+function armJoinFallback() {
+  clearTimeout(joinFallbackTimer);
+  joinFallbackTimer = setTimeout(() => {
+    if (!joiningGame || myId !== null) return;
+    setJoinStatus('Servidor demorou. Reconectando automaticamente...', 'warn');
+    try { if (ws) ws.close(); } catch {}
+    scheduleReconnect();
+    armJoinFallback();
+  }, 7000);
+}
+function finishJoin() {
+  if (!joiningGame) return;
+  joiningGame = false;
+  clearTimeout(joinFallbackTimer);
+  setJoinLoading(false);
+  setJoinStatus('Conectado!', 'ok');
+  document.getElementById('start').style.display = 'none';
+}
+function scheduleReconnect() {
+  if (reconnectTimer) return;
+  setNetStatus('reconnecting','RECONECTANDO...');
+  reconnectTimer = setTimeout(() => { reconnectTimer = null; connect(); }, reconnectDelay);
+  reconnectDelay = Math.min(5000, Math.round(reconnectDelay * 1.45));
+}
+function connect() {
