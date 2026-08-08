@@ -2,23 +2,40 @@
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 
 const PORT = process.env.PORT || 3000;
+const BUILD = 'v4-beta-validated-1.1';
 
+// Servidor estático mínimo e previsível. HTML sempre no-store para evitar celular preso em deploy antigo.
 const server = http.createServer((req, res) => {
-  const filePath = req.url === '/' ? '/index.html' : req.url;
-  const full = path.join(__dirname, 'public', filePath);
+  let pathname = '/';
+  try { pathname = decodeURIComponent(new URL(req.url || '/', 'http://deadzone.local').pathname); } catch {}
+  if (pathname === '/health' || pathname === '/healthz') {
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify({ ok: true, build: BUILD, players: [...players.values()].filter(p => p.connected).length }));
+    return;
+  }
+  if (pathname === '/') pathname = '/index.html';
+  if (pathname !== '/index.html') { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('Not found'); return; }
+
+  const full = path.join(__dirname, 'public', 'index.html');
   fs.readFile(full, (err, data) => {
-    if (err) { res.writeHead(404); res.end('Not found'); return; }
-    const ext = path.extname(full);
-    const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' };
-    res.writeHead(200, { 'Content-Type': types[ext] || 'text/plain' });
+    if (err) { res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('Server error'); return; }
+    res.writeHead(200, {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'X-Content-Type-Options': 'nosniff',
+      'Referrer-Policy': 'same-origin'
+    });
     res.end(data);
   });
 });
 
-const wss = new WebSocketServer({ server });
+const wss = new WebSocketServer({ server, maxPayload: 16 * 1024 });
 
 // ==================== CONFIG ====================
 const WORLD = { w: 1600, h: 1200 };
@@ -26,6 +43,11 @@ const MAX_HP = 100;
 const RESPAWN_MS = 3000;
 const KILL_REWARD = 50;   // pontos ganhos por kill
 const DEATH_REWARD = 15;  // pontos de consolação ao morrer
+const SESSION_GRACE_MS = 3 * 60 * 1000; // mantém a sessão por 3 min fora do browser
+const HEALTH_PICKUP_COUNT = 5;
+const HEALTH_PICKUP_HEAL = 35;
+const HEALTH_RESPAWN_MIN_MS = 12000;
+const HEALTH_RESPAWN_MAX_MS = 20000;
 
 // ==================== FASES DE JOGO ====================
 const ROUND_MS = 3 * 60 * 1000; // 3 min jogando
@@ -52,8 +74,8 @@ const UTILITIES = {
 const SKINS = {
   bean: { name: 'Clássico', icon: 'bean', cost: 0, description: 'O personagem clássico do DEADZONE.' },
   gravida: { name: 'Gestante', icon: 'pregnant', cost: 15, description: 'Mulher negra grávida em estilo cartunesco.' },
-  capivara: { name: 'Capivara', icon: 'capybara', cost: 15, description: 'Capivara dos Alpes. Mesmas hitbox e velocidade dos demais.' },
-  bubu: { name: 'Bubu', icon: 'bubu', cost: 60, power: 'dracarys', description: 'Bubu grávida. Desbloqueia o poder exclusivo Dracarys 🔥 (bola de fogo que explode).' }
+  bubu: { name: 'Bubu', icon: 'bubu', cost: 20, description: 'Mulher branca grávida. Libera o poder especial Dracarys da Bubu.' },
+  capivara: { name: 'Capivara', icon: 'capybara', cost: 15, description: 'Capivara dos Alpes. Mesmas hitbox e velocidade dos demais.' }
 };
 
 const WEAPONS = {
@@ -61,6 +83,24 @@ const WEAPONS = {
     name: 'Chinelo', emoji: '🩴', icon: 'chinelo', cost: 0,
     damage: 24, cooldown: 320, speed: 15, range: 520, pellets: 1, hitRadius: 19,
     tint: '#ff5fa2', description: 'Arremesso médio, simples e confiável.'
+  },
+  dracarys: {
+    name: 'Dracarys da Bubu', emoji: '🔥', icon: 'dracarys', cost: 0,
+    damage: 11, cooldown: 180, speed: 12.5, range: 245, pellets: 5, spread: 0.20, hitRadius: 24,
+    tint: '#ff8a3d', fire: true, specialFor: 'bubu',
+    description: 'Poder especial da Bubu: cone curto de chamas.'
+  },
+  peido: {
+    name: 'Peido do Pepeu', emoji: '💨', icon: 'fart', cost: 20,
+    damage: 10, cooldown: 520, speed: 7.5, range: 210, pellets: 4, spread: 0.62, hitRadius: 30,
+    tint: '#8fbc58', gas: true,
+    description: 'Nuvem curta e barata. Espalha vários puffs de perto.'
+  },
+  lilika: {
+    name: 'Lilika Possuída', emoji: '👹', icon: 'lilika', cost: 160,
+    damage: 32, cooldown: 900, speed: 15, range: 600, pellets: 1, hitRadius: 27,
+    tint: '#c85cff', possessed: true,
+    description: 'Arremessa uma mini Lilika cartunesca girando pelo mapa.'
   },
   grito: {
     name: 'Grito do Vado', emoji: '📣', icon: 'grito', cost: 0,
@@ -82,25 +122,6 @@ const WEAPONS = {
     name: 'Espada-de-São-Jorge', emoji: '🌿', icon: 'snakeplant', cost: 480,
     damage: 48, cooldown: 780, speed: 23, range: 760, pellets: 1, hitRadius: 20,
     tint: '#77c44a', description: 'Folha pontuda lançada em linha reta. Alto dano.'
-  },
-  peido: {
-    name: 'Peido do Pepeu', emoji: '💨', icon: 'peido', cost: 40,
-    damage: 10, cooldown: 480, speed: 7, range: 190, pellets: 3, spread: 0.55, hitRadius: 26,
-    tint: '#c7e59a', gas: true,
-    description: 'Nuvem de gás fedorento. Curtíssimo alcance, mas garante o corpo a corpo.'
-  },
-  lilika: {
-    name: 'Lilika Possuída', emoji: '👹', icon: 'lilika', cost: 360,
-    damage: 34, cooldown: 720, speed: 16, range: 720, pellets: 1, hitRadius: 26,
-    tint: '#d94f8a', spin: true,
-    description: 'Arremessa uma criança possuída girando pela arena. Dano alto.'
-  },
-  dracarys: {
-    name: 'Dracarys da Bubu', emoji: '🔥', icon: 'dracarys', cost: 0,
-    damage: 30, cooldown: 900, speed: 13, range: 620, pellets: 1, hitRadius: 24,
-    tint: '#ff6a1a', fireball: true, explodeRadius: 90, explodeDamage: 22,
-    exclusive: 'bubu',
-    description: 'Poder exclusivo da Bubu. Bola de fogo que explode ao acertar, causando dano em área.'
   }
 };
 
@@ -112,63 +133,90 @@ const MAPS = [
     name: 'Sobrado dos Alpes 859',
     floor: '#20252e', // rua/calçada escura em volta
     rooms: [
-      { x: 520, y: 120, w: 560, h: 180, label: '🚗 Garagem',   color: '#2c3038' },
-      { x: 520, y: 320, w: 300, h: 240, label: '🛋️ Sala',      color: '#4a3f30' },
-      { x: 840, y: 320, w: 240, h: 240, label: '🍳 Cozinha',   color: '#3f4535' },
-      { x: 520, y: 580, w: 240, h: 240, label: '🚿 Banheiro',  color: '#35434a' },
-      { x: 780, y: 580, w: 300, h: 240, label: '🛏️ Quarto',    color: '#453540' },
-      { x: 140, y: 300, w: 340, h: 540, label: '🌳 Quintal',    color: '#2e4a32' },
-      { x: 1120, y: 300, w: 340, h: 540, label: '🧺 Lavanderia', color: '#35454a' }
+      { x: 520, y: 120, w: 560, h: 180, label: '🚗 Garagem',   color: '#303744' },
+      { x: 520, y: 320, w: 300, h: 240, label: '🛋️ Sala',      color: '#594934' },
+      { x: 840, y: 320, w: 240, h: 240, label: '🍳 Cozinha',   color: '#4a523b' },
+      { x: 520, y: 580, w: 240, h: 240, label: '🚿 Banheiro',  color: '#3b5260' },
+      { x: 780, y: 580, w: 300, h: 240, label: '🛏️ Quarto',    color: '#563d50' },
+      { x: 140, y: 300, w: 340, h: 540, label: '🌳 Quintal',    color: '#315b39' },
+      { x: 1120, y: 300, w: 340, h: 540, label: '🧺 Lavanderia', color: '#39515a' }
     ],
     walls: [
-      // contorno da casa (com aberturas = portas)
-      { x: 520, y: 300, w: 560, h: 20 },             // parede sob a garagem
-      { x: 500, y: 320, w: 20, h: 240 },             // lateral esq sala
-      { x: 1080, y: 320, w: 20, h: 500 },            // lateral dir cozinha/quarto
-      { x: 820, y: 340, w: 20, h: 200 },             // sala|cozinha (porta embaixo)
-      { x: 520, y: 560, w: 240, h: 20 },             // sala/banheiro (porta na direita)
-      { x: 840, y: 560, w: 240, h: 20 },             // cozinha/quarto
-      { x: 760, y: 600, w: 20, h: 220 },             // banheiro|quarto
-      // paredes externas que separam quintal e lavanderia da rua (com passagens)
-      { x: 480, y: 300, w: 20, h: 180 }, { x: 480, y: 620, w: 20, h: 220 },
-      { x: 1100, y: 300, w: 20, h: 180 }, { x: 1100, y: 620, w: 20, h: 220 }
+      // Garagem -> casa: porta central com 100px livres
+      { x: 520, y: 300, w: 180, h: 20 }, { x: 800, y: 300, w: 280, h: 20 },
+      // Quintal -> sala/banheiro: duas passagens largas
+      { x: 500, y: 320, w: 20, h: 105 }, { x: 500, y: 515, w: 20, h: 120 }, { x: 500, y: 725, w: 20, h: 95 },
+      // Casa -> lavanderia: duas passagens largas
+      { x: 1080, y: 320, w: 20, h: 105 }, { x: 1080, y: 515, w: 20, h: 120 }, { x: 1080, y: 725, w: 20, h: 95 },
+      // Sala <-> cozinha, abertura de 90px
+      { x: 820, y: 320, w: 20, h: 75 }, { x: 820, y: 485, w: 20, h: 75 },
+      // Sala <-> banheiro
+      { x: 520, y: 560, w: 100, h: 20 }, { x: 710, y: 560, w: 50, h: 20 },
+      // Cozinha <-> quarto
+      { x: 840, y: 560, w: 70, h: 20 }, { x: 1000, y: 560, w: 80, h: 20 },
+      // Banheiro <-> quarto
+      { x: 760, y: 580, w: 20, h: 70 }, { x: 760, y: 740, w: 20, h: 80 }
+    ],
+    doors: [
+      { x:700,y:300,w:100,h:20 }, { x:500,y:425,w:20,h:90 }, { x:500,y:635,w:20,h:90 },
+      { x:1080,y:425,w:20,h:90 }, { x:1080,y:635,w:20,h:90 }, { x:820,y:395,w:20,h:90 },
+      { x:620,y:560,w:90,h:20 }, { x:910,y:560,w:90,h:20 }, { x:760,y:650,w:20,h:90 }
     ]
   },
   {
     name: 'Casa da Vó',
     floor: '#241f18',
     rooms: [
-      { x: 430, y: 160, w: 340, h: 240, label: '🛋️ Sala',      color: '#4a3f30' },
-      { x: 800, y: 160, w: 320, h: 240, label: '🍳 Cozinha',   color: '#3f4535' },
-      { x: 430, y: 430, w: 340, h: 260, label: '🛏️ Quarto',    color: '#453540' },
-      { x: 800, y: 430, w: 320, h: 260, label: '🚿 Banheiro',  color: '#35434a' },
-      { x: 120, y: 200, w: 280, h: 700, label: '🌳 Quintal',    color: '#2e4a32' },
-      { x: 430, y: 720, w: 690, h: 180, label: '🧺 Área/Varal', color: '#35454a' }
+      { x: 430, y: 160, w: 340, h: 240, label: '🛋️ Sala',      color: '#594934' },
+      { x: 800, y: 160, w: 320, h: 240, label: '🍳 Cozinha',   color: '#4a523b' },
+      { x: 430, y: 430, w: 340, h: 260, label: '🛏️ Quarto',    color: '#563d50' },
+      { x: 800, y: 430, w: 320, h: 260, label: '🚿 Banheiro',  color: '#3b5260' },
+      { x: 120, y: 200, w: 280, h: 700, label: '🌳 Quintal',    color: '#315b39' },
+      { x: 430, y: 720, w: 690, h: 180, label: '🧺 Área/Varal', color: '#39515a' }
     ],
     walls: [
-      { x: 770, y: 160, w: 20, h: 180 },   // sala|cozinha (porta embaixo)
-      { x: 430, y: 400, w: 340, h: 20 },   // sala/quarto
-      { x: 800, y: 400, w: 320, h: 20 },   // cozinha/banheiro
-      { x: 770, y: 470, w: 20, h: 220 },   // quarto|banheiro
-      { x: 400, y: 200, w: 20, h: 260 }, { x: 400, y: 560, w: 20, h: 340 }, // quintal
-      { x: 430, y: 700, w: 300, h: 20 }, { x: 820, y: 700, w: 300, h: 20 }  // área embaixo
+      // Sala <-> cozinha
+      { x:780,y:160,w:20,h:80 }, { x:780,y:330,w:20,h:70 },
+      // Sala <-> quarto
+      { x:430,y:410,w:120,h:20 }, { x:650,y:410,w:120,h:20 },
+      // Cozinha <-> banheiro
+      { x:800,y:410,w:90,h:20 }, { x:990,y:410,w:130,h:20 },
+      // Quarto <-> banheiro
+      { x:780,y:430,w:20,h:75 }, { x:780,y:595,w:20,h:95 },
+      // Quintal -> casa com dois acessos
+      { x:410,y:200,w:20,h:120 }, { x:410,y:410,w:20,h:100 }, { x:410,y:600,w:20,h:300 },
+      // Casa -> área/varal
+      { x:430,y:705,w:150,h:20 }, { x:680,y:705,w:170,h:20 }, { x:950,y:705,w:170,h:20 }
+    ],
+    doors: [
+      {x:780,y:240,w:20,h:90}, {x:550,y:410,w:100,h:20}, {x:890,y:410,w:100,h:20},
+      {x:780,y:505,w:20,h:90}, {x:410,y:320,w:20,h:90}, {x:410,y:510,w:20,h:90},
+      {x:580,y:705,w:100,h:20}, {x:850,y:705,w:100,h:20}
     ]
   },
   {
     name: 'Kitnet do Zé',
     floor: '#1e2226',
     rooms: [
-      { x: 400, y: 200, w: 420, h: 320, label: '🛋️ Sala/Quarto', color: '#453f38' },
-      { x: 850, y: 200, w: 340, h: 160, label: '🍳 Cozinha',      color: '#3f4535' },
-      { x: 850, y: 390, w: 340, h: 130, label: '🚿 Banheiro',     color: '#35434a' },
-      { x: 120, y: 200, w: 250, h: 500, label: '🚪 Corredor',     color: '#2c3038' },
-      { x: 400, y: 550, w: 790, h: 200, label: '🌳 Quintal',       color: '#2e4a32' }
+      { x: 400, y: 200, w: 420, h: 320, label: '🛋️ Sala/Quarto', color: '#55483e' },
+      { x: 850, y: 200, w: 340, h: 160, label: '🍳 Cozinha',      color: '#4a523b' },
+      { x: 850, y: 390, w: 340, h: 130, label: '🚿 Banheiro',     color: '#3b5260' },
+      { x: 120, y: 200, w: 250, h: 500, label: '🚪 Corredor',     color: '#303744' },
+      { x: 400, y: 550, w: 790, h: 200, label: '🌳 Quintal',       color: '#315b39' }
     ],
     walls: [
-      { x: 820, y: 200, w: 20, h: 320 },   // sala|cozinha/banheiro
-      { x: 850, y: 360, w: 340, h: 20 },   // cozinha/banheiro
-      { x: 370, y: 200, w: 20, h: 200 }, { x: 370, y: 480, w: 20, h: 220 }, // corredor (porta)
-      { x: 400, y: 520, w: 300, h: 20 }, { x: 780, y: 520, w: 410, h: 20 }  // quintal (passagem)
+      // Sala/Quarto <-> cozinha/banheiro com duas portas
+      {x:830,y:200,w:20,h:80}, {x:830,y:370,w:20,h:55}, {x:830,y:505,w:20,h:15},
+      // Cozinha <-> banheiro
+      {x:850,y:375,w:110,h:20}, {x:1050,y:375,w:140,h:20},
+      // Corredor -> sala/quarto
+      {x:380,y:200,w:20,h:105}, {x:380,y:395,w:20,h:125}, {x:380,y:610,w:20,h:90},
+      // Casa -> quintal
+      {x:400,y:530,w:130,h:20}, {x:620,y:530,w:190,h:20}, {x:900,y:530,w:290,h:20}
+    ],
+    doors: [
+      {x:830,y:280,w:20,h:90}, {x:830,y:425,w:20,h:80}, {x:960,y:375,w:90,h:20},
+      {x:380,y:305,w:20,h:90}, {x:380,y:520,w:20,h:90}, {x:530,y:530,w:90,h:20}, {x:810,y:530,w:90,h:20}
     ]
   }
 ];
@@ -193,21 +241,9 @@ let nextId = 1;
 let nextBulletId = 1;
 let nextBombId = 1;
 const thrownBombs = [];
-
-// ==================== CHURRASCO DA MAMÃE MÁRCIA (pickups de HP) ====================
-const BBQ_HEAL = 30;        // quanto cura
-const BBQ_COUNT = 5;        // quantos no mapa
-const BBQ_RESPAWN_MS = 12000; // tempo pra reaparecer após coletado
-let churrascos = [];        // { id, x, y, active, respawnAt }
-let nextBbqId = 1;
-
-function spawnChurrascos() {
-  churrascos = [];
-  for (let i = 0; i < BBQ_COUNT; i++) {
-    const p = spawnPoint();
-    churrascos.push({ id: nextBbqId++, x: p.x, y: p.y, active: true, respawnAt: 0 });
-  }
-}
+const sessions = new Map(); // sessionToken -> playerId
+let nextPickupId = 1;
+const healthPickups = [];
 
 function spawnPoint() {
   // acha um ponto que não esteja dentro de parede
@@ -238,7 +274,12 @@ function makePlayer(id, name) {
     spectatorUntilRound: 0,       // número da última rodada em que deve ficar fora
     lastShot: 0,
     lastBomb: 0,
+    lastChat: 0,
     lastSeen: Date.now(),        // heartbeat
+    connected: true,
+    disconnectedAt: 0,
+    sessionToken: '',
+    socket: null,
     input: { up: false, down: false, left: false, right: false },
     color: `hsl(${Math.floor(Math.random() * 360)}, 70%, 55%)`
   };
@@ -261,24 +302,83 @@ function resetInput(pl) {
   pl.input = { up: false, down: false, left: false, right: false };
 }
 
-wss.on('connection', (ws) => {
-  const id = nextId++;
-  const player = makePlayer(id, null);
-  players.set(id, player);
+function cleanSessionToken(raw) {
+  const token = String(raw || '').trim();
+  return /^[a-zA-Z0-9_-]{20,128}$/.test(token) ? token : crypto.randomBytes(24).toString('base64url');
+}
+
+function sessionTokenFromRequest(req) {
+  try {
+    const url = new URL(req.url || '/', 'http://deadzone.local');
+    return cleanSessionToken(url.searchParams.get('session'));
+  } catch {
+    return cleanSessionToken('');
+  }
+}
+
+function randomHealthRespawn() {
+  return HEALTH_RESPAWN_MIN_MS + Math.floor(Math.random() * (HEALTH_RESPAWN_MAX_MS - HEALTH_RESPAWN_MIN_MS + 1));
+}
+
+function makeHealthPickup() {
+  const sp = spawnPoint();
+  return { id: nextPickupId++, x: sp.x, y: sp.y, heal: HEALTH_PICKUP_HEAL, respawnAt: 0 };
+}
+
+function resetHealthPickups() {
+  healthPickups.length = 0;
+  for (let i = 0; i < HEALTH_PICKUP_COUNT; i++) healthPickups.push(makeHealthPickup());
+}
+
+resetHealthPickups();
+
+wss.on('connection', (ws, req) => {
+  const token = sessionTokenFromRequest(req);
+  let id = sessions.get(token);
+  let player = id ? players.get(id) : null;
+  let resumed = false;
+  const now = Date.now();
+
+  // Token conhecido: retoma a sessão se ela ainda estiver dentro da janela de 3 minutos.
+  if (player && !player.connected && player.disconnectedAt && now - player.disconnectedAt > SESSION_GRACE_MS) {
+    players.delete(player.id);
+    sessions.delete(token);
+    player = null;
+    id = null;
+  }
+
+  if (player) {
+    resumed = true;
+    if (player.socket && player.socket !== ws && player.socket.readyState === 1) {
+      try { player.socket.close(4001, 'session resumed'); } catch {}
+    }
+    player.connected = true;
+    player.disconnectedAt = 0;
+    player.lastSeen = now;
+    player.socket = ws;
+    resetInput(player);
+  } else {
+    id = nextId++;
+    player = makePlayer(id, null);
+    player.sessionToken = token;
+    player.socket = ws;
+    players.set(id, player);
+    sessions.set(token, id);
+  }
   ws.playerId = id;
 
-  ws.send(JSON.stringify({ type: 'init', id, world: WORLD, weapons: WEAPONS, utilities: UTILITIES, skins: SKINS, map: currentMap(), killReward: KILL_REWARD, phase, timeLeft: Math.max(0, Math.round((phaseEndsAt - Date.now()) / 1000)) }));
+  ws.send(JSON.stringify({ type: 'init', id, sessionToken: token, resumed, build: BUILD, world: WORLD, weapons: WEAPONS, utilities: UTILITIES, skins: SKINS, map: currentMap(), killReward: KILL_REWARD, phase, timeLeft: Math.max(0, Math.round((phaseEndsAt - Date.now()) / 1000)) }));
 
   ws.on('message', (raw) => {
     let msg;
     try { msg = JSON.parse(raw); } catch { return; }
-    const pl = players.get(id);
+    const pl = players.get(ws.playerId);
     if (!pl) return;
     pl.lastSeen = Date.now();
 
     switch (msg.type) {
       case 'setName':
-        pl.name = String(msg.name || '').slice(0, 12) || pl.name;
+        pl.name = String(msg.name || '').replace(/[\x00-\x1F\x7F<>]/g, '').trim().slice(0, 12) || pl.name;
         if (typeof msg.level === 'number') {
           pl.level = Math.max(1, Math.min(999, msg.level | 0));
           const buff = levelBuff(pl.level);
@@ -295,7 +395,9 @@ wss.on('connection', (ws) => {
         }
         break;
       case 'switchWeapon':
-        if (WEAPONS[msg.weapon] && canUseWeapon(pl, msg.weapon)) pl.weapon = msg.weapon;
+        if (WEAPONS[msg.weapon] && pl.owned[msg.weapon]) {
+          if (msg.weapon !== 'dracarys' || pl.skin === 'bubu') pl.weapon = msg.weapon;
+        }
         break;
       case 'buy':
         buyWeapon(pl, msg.weapon, ws);
@@ -321,27 +423,29 @@ wss.on('connection', (ws) => {
       case 'chat':
         handleChat(pl, msg.text);
         break;
+      case 'pause':
+        resetInput(pl);
+        break;
       case 'pong':
         break; // resposta ao ping, já atualizou lastSeen
     }
   });
 
-  ws.on('close', () => players.delete(id));
+  ws.on('close', () => {
+    const pl = players.get(ws.playerId);
+    if (!pl || pl.socket !== ws) return; // socket antigo fechado após um resume não derruba a sessão nova
+    pl.connected = false;
+    pl.disconnectedAt = Date.now();
+    pl.socket = null;
+    resetInput(pl);
+  });
 });
-
-function canUseWeapon(pl, weaponKey) {
-  const w = WEAPONS[weaponKey];
-  if (!w) return false;
-  // arma exclusiva de skin: só se estiver com aquela skin equipada
-  if (w.exclusive) return pl.skin === w.exclusive;
-  return !!pl.owned[weaponKey];
-}
 
 function buyWeapon(pl, weaponKey, ws) {
   const w = WEAPONS[weaponKey];
   if (!w) return;
-  if (w.exclusive) {   // armas exclusivas não se compram aqui; vêm com a skin
-    ws.send(JSON.stringify({ type: 'buyResult', ok: false, reason: 'poder exclusivo de personagem' }));
+  if (weaponKey === 'dracarys') {
+    ws.send(JSON.stringify({ type: 'buyResult', ok: false, reason: 'Dracarys é um poder exclusivo da Bubu' }));
     return;
   }
   if (pl.owned[weaponKey]) return;               // já tem
@@ -393,8 +497,15 @@ function buySkin(pl, skinKey, ws) {
   const skin = SKINS[skinKey];
   if (!skin || skinKey === 'bean') return;
   if (pl.ownedSkins[skinKey]) {
-    pl.skin = skinKey; syncSkinPower(pl);
-    ws.send(JSON.stringify({ type: 'shopResult', ok: true, kind: 'skin', skin: skinKey, message: `🧍 ${skin.name} equipado.` }));
+    pl.skin = skinKey;
+    if (skinKey === 'bubu') {
+      pl.owned.dracarys = true;
+      pl.weapon = 'dracarys';
+      ws.send(JSON.stringify({ type: 'shopResult', ok: true, kind: 'skin', skin: skinKey, message: `🔥 ${skin.name} equipada. Dracarys ativado.` }));
+    } else {
+      if (pl.weapon === 'dracarys') pl.weapon = 'chinelo';
+      ws.send(JSON.stringify({ type: 'shopResult', ok: true, kind: 'skin', skin: skinKey, message: `🧍 ${skin.name} equipado.` }));
+    }
     return;
   }
   if (pl.points < skin.cost) {
@@ -403,27 +514,25 @@ function buySkin(pl, skinKey, ws) {
   }
   pl.points -= skin.cost;
   pl.ownedSkins[skinKey] = true;
-  pl.skin = skinKey; syncSkinPower(pl);
+  pl.skin = skinKey;
+  if (skinKey === 'bubu') {
+    pl.owned.dracarys = true;
+    pl.weapon = 'dracarys';
+    ws.send(JSON.stringify({ type: 'shopResult', ok: true, kind: 'skin', skin: skinKey, message: `🔥 Personagem Bubu comprada. Dracarys liberado e equipado.` }));
+    return;
+  }
   ws.send(JSON.stringify({ type: 'shopResult', ok: true, kind: 'skin', skin: skinKey, message: `🧍 Personagem ${skin.name} comprado e equipado.` }));
 }
 
-function syncSkinPower(pl) {
-  const skin = SKINS[pl.skin];
-  const powerWeapon = skin && skin.power;
-  // libera a arma de poder da skin atual
-  if (powerWeapon && WEAPONS[powerWeapon]) pl.owned[powerWeapon] = true;
-  // remove armas exclusivas de outras skins e desequipa se necessário
-  for (const wk in WEAPONS) {
-    const w = WEAPONS[wk];
-    if (w.exclusive && w.exclusive !== pl.skin) {
-      delete pl.owned[wk];
-      if (pl.weapon === wk) pl.weapon = 'chinelo';
-    }
-  }
-}
-
 function switchSkin(pl, skinKey) {
-  if (SKINS[skinKey] && pl.ownedSkins[skinKey]) { pl.skin = skinKey; syncSkinPower(pl); }
+  if (!SKINS[skinKey] || !pl.ownedSkins[skinKey]) return;
+  pl.skin = skinKey;
+  if (skinKey === 'bubu') {
+    pl.owned.dracarys = true;
+    pl.weapon = 'dracarys';
+  } else if (pl.weapon === 'dracarys') {
+    pl.weapon = 'chinelo';
+  }
 }
 
 function throwBomb(pl, ws) {
@@ -461,7 +570,7 @@ function explodeBomb(b) {
   events.push({ kind: 'bombExplosion', x: b.x, y: b.y, radius: b.radius });
   const attacker = players.get(b.owner) || null;
   for (const pl of players.values()) {
-    if (!pl.alive || isSpectating(pl)) continue;
+    if (!pl.connected || !pl.alive || isSpectating(pl)) continue;
     const d = Math.hypot(pl.x - b.x, pl.y - b.y);
     if (d > b.radius) continue;
     if (segmentHitsWall(b.x, b.y, pl.x, pl.y)) continue;
@@ -472,15 +581,18 @@ function explodeBomb(b) {
 }
 
 function handleChat(pl, text) {
-  text = String(text || '').slice(0, 120).trim();
+  const now = Date.now();
+  if (now - pl.lastChat < 550) return;
+  text = String(text || '').replace(/[\x00-\x1F\x7F]/g, ' ').slice(0, 120).trim();
   if (!text) return;
+  pl.lastChat = now;
   chatLog.push({ name: pl.name, color: pl.color, text });
 }
 
 function tryAttack(pl) {
   const w = WEAPONS[pl.weapon];
   if (!w) return;
-  if (!canUseWeapon(pl, pl.weapon)) return; // ex.: Dracarys só com a skin Bubu
+  if (pl.weapon === 'dracarys' && pl.skin !== 'bubu') { pl.weapon = 'chinelo'; return; }
   const now = Date.now();
   if (now - pl.lastShot < w.cooldown) return;
   pl.lastShot = now;
@@ -493,11 +605,11 @@ function tryAttack(pl) {
     const spawnOffset = w.wave ? 30 : 26;
     bullets.push({
       id: nextBulletId++, owner: pl.id, wpn: pl.weapon, wave: !!w.wave, pierce: !!w.pierce,
+      gas: !!w.gas, possessed: !!w.possessed, fire: !!w.fire,
       x: pl.x + Math.cos(a) * spawnOffset,
       y: pl.y + Math.sin(a) * spawnOffset,
       vx: Math.cos(a) * w.speed, vy: Math.sin(a) * w.speed,
       damage: dmg, dist: 0, range: w.range, hitRadius: w.hitRadius || 20,
-      fireball: !!w.fireball, explodeRadius: w.explodeRadius || 0, explodeDamage: w.explodeDamage || 0,
       hitIds: new Set()
     });
   }
@@ -565,7 +677,7 @@ function tallyVotesAndBan() {
   bannedThisRound = null;
   if (top && topN > 0 && !tie) {
     const pl = players.get(+top);
-    if (pl) {
+    if (pl && pl.connected) {
       pl.spectatorUntilRound = roundNumber + 1; // fica fora da próxima rodada inteira
       pl.banned = true;
       pl.alive = false;
@@ -588,7 +700,7 @@ function nextRound() {
   votes = {};
   bullets.length = 0;
   thrownBombs.length = 0;
-  spawnChurrascos(); // novos churrascos na nova tela
+  resetHealthPickups();
   for (const pl of players.values()) {
     resetInput(pl);
     const spectating = isSpectating(pl);
@@ -635,16 +747,27 @@ function handleVote(voter, targetId) {
     return;
   }
   const target = players.get(Number(targetId));
-  if (!target || target.id === voter.id || isSpectating(target)) return;
+  if (!target || !target.connected || target.id === voter.id || isSpectating(target)) return;
   votes[voter.id] = target.id;
 }
 
-// ==================== HEARTBEAT ====================
-// Remove jogadores que sumiram (fecharam aba sem o close disparar) e fecha sockets mortos.
+// ==================== HEARTBEAT + SESSÃO DE 3 MIN ====================
+// Se o browser dormir/fechar, o jogador some da arena mas o estado fica guardado por 3 minutos.
 setInterval(() => {
   const now = Date.now();
   for (const [id, pl] of players) {
-    if (now - pl.lastSeen > 12000) players.delete(id); // 12s sem sinal = saiu
+    if (pl.connected && now - pl.lastSeen > 15000) {
+      // Força o cliente a reconectar. A sessão não é apagada, só entra em grace period.
+      pl.connected = false;
+      pl.disconnectedAt = now;
+      resetInput(pl);
+      const sock = pl.socket;
+      pl.socket = null;
+      try { if (sock && sock.readyState === 1) sock.close(4000, 'heartbeat timeout'); } catch {}
+    } else if (!pl.connected && pl.disconnectedAt && now - pl.disconnectedAt > SESSION_GRACE_MS) {
+      players.delete(id);
+      if (pl.sessionToken) sessions.delete(pl.sessionToken);
+    }
   }
   for (const client of wss.clients) {
     if (client.readyState === 1) client.send(JSON.stringify({ type: 'ping' }));
@@ -658,7 +781,7 @@ setInterval(() => {
   if (!moving && bullets.length) bullets.length = 0;
   // Movimento com colisão (testa eixos separadamente pra deslizar na parede)
   for (const pl of players.values()) {
-    if (!pl.alive || isSpectating(pl) || !moving) continue;
+    if (!pl.connected || !pl.alive || isSpectating(pl) || !moving) continue;
     let dx = 0, dy = 0;
     if (pl.input.up) dy -= 1;
     if (pl.input.down) dy += 1;
@@ -673,27 +796,6 @@ setInterval(() => {
     if (!hitsWall(pl.x, ty, 18)) pl.y = ty;
   }
 
-  // ---- Churrasco: coleta (cura) autoritativa + respawn ----
-  if (moving) {
-    const now = Date.now();
-    for (const bbq of churrascos) {
-      if (!bbq.active) {
-        if (now >= bbq.respawnAt) { const sp = spawnPoint(); bbq.x = sp.x; bbq.y = sp.y; bbq.active = true; }
-        continue;
-      }
-      for (const pl of players.values()) {
-        if (!pl.alive || isSpectating(pl)) continue;
-        if (pl.hp >= (pl.maxHp || MAX_HP)) continue; // não desperdiça em quem está cheio
-        if (Math.hypot(pl.x - bbq.x, pl.y - bbq.y) < 30) {
-          pl.hp = Math.min(pl.maxHp || MAX_HP, pl.hp + BBQ_HEAL);
-          bbq.active = false; bbq.respawnAt = now + BBQ_RESPAWN_MS;
-          events.push({ kind: 'heal', x: pl.x, y: pl.y, id: pl.id });
-          break;
-        }
-      }
-    }
-  }
-
   // Projéteis (colidem com jogador OU parede) — sub-passos p/ velocidade alta
   for (let i = bullets.length - 1; i >= 0; i--) {
     const b = bullets[i];
@@ -706,14 +808,11 @@ setInterval(() => {
       b.x += sx; b.y += sy; b.dist += Math.hypot(sx, sy);
 
       // ondas sonoras atravessam paredes; projéteis normais colidem
-      if (!b.wave && hitsWall(b.x, b.y, 3)) {
-        if (!b.fireball) events.push({ kind: 'spark', x: b.x, y: b.y });
-        done = true; break;
-      }
+      if (!b.wave && hitsWall(b.x, b.y, 3)) { events.push({ kind: 'spark', x: b.x, y: b.y }); done = true; break; }
 
       const hitR = b.hitRadius || (b.wave ? 42 : 20);
       for (const pl of players.values()) {
-        if (pl.id === b.owner || !pl.alive || isSpectating(pl) || b.hitIds.has(pl.id)) continue;
+        if (!pl.connected || pl.id === b.owner || !pl.alive || isSpectating(pl) || b.hitIds.has(pl.id)) continue;
         if (Math.hypot(pl.x - b.x, pl.y - b.y) < hitR) {
           applyDamage(pl, players.get(b.owner), b.damage);
           b.hitIds.add(pl.id);
@@ -721,28 +820,32 @@ setInterval(() => {
         }
       }
     }
-    const ended = done || b.dist > b.range || b.x < 0 || b.y < 0 || b.x > WORLD.w || b.y > WORLD.h;
-    if (ended) {
-      // Dracarys: bola de fogo explode em área ao terminar
-      if (b.fireball && b.explodeRadius > 0) {
-        events.push({ kind: 'fireExplosion', x: b.x, y: b.y, radius: b.explodeRadius });
-        const attacker = players.get(b.owner) || null;
-        for (const pl of players.values()) {
-          if (!pl.alive || isSpectating(pl) || pl.id === b.owner) continue;
-          const d = Math.hypot(pl.x - b.x, pl.y - b.y);
-          if (d > b.explodeRadius) continue;
-          if (segmentHitsWall(b.x, b.y, pl.x, pl.y)) continue;
-          if (b.hitIds.has(pl.id)) continue; // não soma dano no alvo direto duas vezes
-          const falloff = 1 - Math.min(1, d / b.explodeRadius) * 0.6;
-          applyDamage(pl, attacker, Math.max(8, Math.round(b.explodeDamage * falloff)));
-        }
-      }
+    if (done || b.dist > b.range || b.x < 0 || b.y < 0 || b.x > WORLD.w || b.y > WORLD.h) {
       bullets.splice(i, 1);
     }
   }
 
-  // Pinga do Lelê: garrafa-bomba autoritativa, com colisão e explosão em área.
+  // Churrasco da Mamãe Márcia: cura espalhada aleatoriamente pela arena.
   const nowTick = Date.now();
+  for (const hp of healthPickups) {
+    if (hp.respawnAt) {
+      if (nowTick < hp.respawnAt) continue;
+      const sp = spawnPoint(); hp.x = sp.x; hp.y = sp.y; hp.respawnAt = 0;
+    }
+    if (!moving) continue;
+    for (const pl of players.values()) {
+      if (!pl.connected || !pl.alive || isSpectating(pl) || pl.hp >= pl.maxHp) continue;
+      if (Math.hypot(pl.x - hp.x, pl.y - hp.y) > 31) continue;
+      const before = pl.hp;
+      pl.hp = Math.min(pl.maxHp, pl.hp + hp.heal);
+      const healed = pl.hp - before;
+      hp.respawnAt = nowTick + randomHealthRespawn();
+      events.push({ kind: 'heal', x: hp.x, y: hp.y, player: pl.id, amount: healed });
+      break;
+    }
+  }
+
+  // Pinga do Lelê: garrafa-bomba autoritativa, com colisão e explosão em área.
   for (let i = thrownBombs.length - 1; i >= 0; i--) {
     const b = thrownBombs[i];
     if (!b.stopped) {
@@ -770,16 +873,16 @@ setInterval(() => {
   // Broadcast
   const state = {
     type: 'state',
-    players: [...players.values()].map(p => ({
+    players: [...players.values()].filter(p => p.connected).map(p => ({
       id: p.id, name: p.name, x: Math.round(p.x), y: Math.round(p.y),
       angle: +p.angle.toFixed(2), hp: p.hp, maxHp: p.maxHp, alive: p.alive,
       weapon: p.weapon, kills: p.kills, deaths: p.deaths, points: p.points,
       level: p.level, owned: p.owned, color: p.color, banned: p.banned, spectating: isSpectating(p),
       armor: p.armor, bombs: p.bombs, skin: p.skin, ownedSkins: p.ownedSkins
     })),
-    bullets: bullets.map(b => ({ x: Math.round(b.x), y: Math.round(b.y), a: +Math.atan2(b.vy, b.vx).toFixed(2), w: b.wpn, wave: b.wave ? 1 : 0, progress: Math.max(0, Math.min(1, b.dist / b.range)) })),
+    bullets: bullets.map(b => ({ x: Math.round(b.x), y: Math.round(b.y), a: +Math.atan2(b.vy, b.vx).toFixed(2), w: b.wpn, wave: b.wave ? 1 : 0, gas: b.gas ? 1 : 0, possessed: b.possessed ? 1 : 0, fire: b.fire ? 1 : 0, progress: Math.max(0, Math.min(1, b.dist / b.range)) })),
     bombs: thrownBombs.map(b => ({ id: b.id, x: Math.round(b.x), y: Math.round(b.y), a: +Math.atan2(b.vy, b.vx).toFixed(2), fuse: Math.max(0, b.fuseAt - Date.now()) })),
-    bbq: churrascos.filter(c => c.active).map(c => ({ x: Math.round(c.x), y: Math.round(c.y) })),
+    pickups: healthPickups.filter(h => !h.respawnAt).map(h => ({ id: h.id, x: Math.round(h.x), y: Math.round(h.y), heal: h.heal, kind: 'churrasco' })),
     events,
     chat: chatLog,
     phase,
@@ -796,5 +899,4 @@ setInterval(() => {
   chatLog = [];
 }, 1000 / 30);
 
-spawnChurrascos();
 server.listen(PORT, () => console.log(`DEADZONE rodando na porta ${PORT} — mapa: ${currentMap().name}`));
