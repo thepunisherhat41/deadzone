@@ -4,16 +4,17 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
+const { WeeklyRanking } = require('./ranking');
 
 const PORT = process.env.PORT || 3000;
-const BUILD = 'v4-mobile-beta-2.2-gin10';
+const BUILD = 'v4-mobile-beta-2.3-weekly-ranking';
 
 const server = http.createServer((req, res) => {
   let pathname = '/';
   try { pathname = decodeURIComponent(new URL(req.url || '/', 'http://deadzone.local').pathname); } catch {}
   if (pathname === '/health' || pathname === '/healthz') {
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
-    res.end(JSON.stringify({ ok: true, build: BUILD, players: [...players.values()].filter(p => p.connected).length }));
+    res.end(JSON.stringify({ ok: true, build: BUILD, players: [...players.values()].filter(p => p.connected).length, ranking: ranking.isPersistent() ? 'postgres' : 'memory' }));
     return;
   }
   if (pathname === '/') pathname = '/index.html';
@@ -44,6 +45,10 @@ const HEALTH_PICKUP_COUNT = 5;
 const HEALTH_PICKUP_HEAL = 35;
 const HEALTH_RESPAWN_MIN_MS = 12000;
 const HEALTH_RESPAWN_MAX_MS = 20000;
+
+const ranking = new WeeklyRanking();
+function rankingSafe(promise) { Promise.resolve(promise).catch(err => console.error('[ranking]', err.message)); }
+let roundStartedAt = Date.now();
 
 // ==================== FASES DE JOGO ====================
 const ROUND_MS = 3 * 60 * 1000; // 3 min jogando
@@ -272,6 +277,8 @@ function makePlayer(id, name) {
     points: 0,                   // moeda pra comprar
     level: 1,                    // nível (informado pelo cliente, vem do localStorage)
     kills: 0, deaths: 0,
+    roundKills: 0, roundDeaths: 0,
+    rankingKey: '',
     banned: false,               // compatibilidade de UI: true enquanto estiver espectador
     spectatorUntilRound: 0,       // número da última rodada em que deve ficar fora
     lastShot: 0,
@@ -309,6 +316,14 @@ function cleanSessionToken(raw) {
   return /^[a-zA-Z0-9_-]{20,128}$/.test(token) ? token : crypto.randomBytes(24).toString('base64url');
 }
 
+function playerTokenFromRequest(req) {
+  try {
+    const url = new URL(req.url || '/', 'http://deadzone.local');
+    const raw = String(url.searchParams.get('player') || '').trim();
+    return /^[a-zA-Z0-9_-]{20,128}$/.test(raw) ? raw : '';
+  } catch { return ''; }
+}
+
 function sessionTokenFromRequest(req) {
   try {
     const url = new URL(req.url || '/', 'http://deadzone.local');
@@ -336,6 +351,7 @@ resetHealthPickups();
 
 wss.on('connection', (ws, req) => {
   const token = sessionTokenFromRequest(req);
+  const persistentPlayerToken = playerTokenFromRequest(req) || token;
   let id = sessions.get(token);
   let player = id ? players.get(id) : null;
   let resumed = false;
@@ -368,10 +384,12 @@ wss.on('connection', (ws, req) => {
     sessions.set(token, id);
   }
   ws.playerId = id;
+  player.rankingKey = ranking.playerKey(persistentPlayerToken);
+  rankingSafe(ranking.ensurePlayer(player));
   // Gin de 10 do Pedrin é gratuita, inclusive em sessão retomada.
   player.owned.gin10 = true;
 
-  ws.send(JSON.stringify({ type: 'init', id, sessionToken: token, resumed, build: BUILD, world: WORLD, weapons: WEAPONS, utilities: UTILITIES, skins: SKINS, map: currentMap(), killReward: KILL_REWARD, phase, timeLeft: Math.max(0, Math.round((phaseEndsAt - Date.now()) / 1000)) }));
+  ws.send(JSON.stringify({ type: 'init', id, sessionToken: token, resumed, build: BUILD, world: WORLD, weapons: WEAPONS, utilities: UTILITIES, skins: SKINS, map: currentMap(), killReward: KILL_REWARD, rankingPersistent: ranking.isPersistent(), phase, timeLeft: Math.max(0, Math.round((phaseEndsAt - Date.now()) / 1000)) }));
 
   ws.on('message', (raw) => {
     let msg;
@@ -383,6 +401,7 @@ wss.on('connection', (ws, req) => {
     switch (msg.type) {
       case 'setName':
         pl.name = String(msg.name || '').replace(/[\x00-\x1F\x7F<>]/g, '').trim().slice(0, 12) || pl.name;
+        rankingSafe(ranking.updateName(pl));
         if (typeof msg.level === 'number') {
           pl.level = Math.max(1, Math.min(999, msg.level | 0));
           const buff = levelBuff(pl.level);
@@ -435,6 +454,9 @@ wss.on('connection', (ws, req) => {
         break;
       case 'chat':
         handleChat(pl, msg.text);
+        break;
+      case 'rankingRequest':
+        ranking.snapshot(pl, 10).then(data => { if (ws.readyState === 1) ws.send(JSON.stringify({ type: 'ranking', ...data })); }).catch(err => console.error('[ranking]', err.message));
         break;
       case 'pong':
         break; // resposta ao ping, já atualizou lastSeen
@@ -613,9 +635,13 @@ function applyDamage(target, attacker, dmg) {
     target.alive = false;
     target.armor = 0;
     target.deaths++;
+    target.roundDeaths++;
+    rankingSafe(ranking.recordDeath(target));
     target.points += DEATH_REWARD;  // consolação: morrer também dá pontos
     if (attacker && attacker.id !== target.id) {
       attacker.kills++;
+      attacker.roundKills++;
+      rankingSafe(ranking.recordKill(attacker));
       attacker.points += KILL_REWARD;
       events.push({ kind: 'kill', killer: attacker.id, x: attacker.x, y: attacker.y });
     }
@@ -633,6 +659,10 @@ function respawn(pl) {
 
 // ==================== SISTEMA DE VOTAÇÃO ====================
 function startVoting() {
+  const rankingParticipants = [...players.values()]
+    .filter(p => p.connected && !isSpectating(p))
+    .map(p => ({ id:p.id, name:p.name, rankingKey:p.rankingKey, roundKills:p.roundKills||0, roundDeaths:p.roundDeaths||0 }));
+  rankingSafe(ranking.recordRound(String(roundStartedAt), rankingParticipants));
   phase = 'voting';
   votes = {};
   bullets.length = 0; // nenhum projétil continua causando dano durante a reunião
@@ -675,6 +705,7 @@ function tallyVotesAndBan() {
 function nextRound() {
   // nova tela. O jogador ejetado permanece espectador durante esta rodada inteira.
   roundNumber++;
+  roundStartedAt = Date.now();
   currentMapIndex = Math.floor(Math.random() * MAPS.length);
   phase = 'playing';
   phaseEndsAt = Date.now() + ROUND_MS;
@@ -684,6 +715,7 @@ function nextRound() {
   resetHealthPickups();
   for (const pl of players.values()) {
     resetInput(pl);
+    pl.roundKills = 0; pl.roundDeaths = 0;
     const spectating = isSpectating(pl);
     pl.banned = spectating;
     if (spectating) {
@@ -880,4 +912,6 @@ setInterval(() => {
   chatLog = [];
 }, 1000 / 30);
 
-server.listen(PORT, () => console.log(`DEADZONE rodando na porta ${PORT} — mapa: ${currentMap().name}`));
+ranking.init().catch(err => console.error('[ranking] init:', err.message)).finally(() => {
+  server.listen(PORT, () => console.log(`DEADZONE rodando na porta ${PORT} — mapa: ${currentMap().name} — ranking: ${ranking.isPersistent() ? 'postgres' : 'memory'}`));
+});
