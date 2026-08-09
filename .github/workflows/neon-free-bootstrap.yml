@@ -1,0 +1,100 @@
+name: Bootstrap free Neon Postgres
+
+on:
+  push:
+    branches:
+      - infra-neon-free
+    paths:
+      - '.github/workflows/neon-free-bootstrap.yml'
+
+permissions:
+  contents: write
+
+env:
+  CLAIM_API: https://neon.new/api/v1/database
+
+jobs:
+  bootstrap:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: infra-neon-free
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create temporary claimable Postgres
+        id: neon
+        shell: bash
+        run: |
+          set -euo pipefail
+          response="$(curl -fsS -X POST "$CLAIM_API" \
+            -H 'Content-Type: application/json' \
+            -d '{"ref":"deadzone-weekly-ranking"}')"
+          printf '%s' "$response" > /tmp/neon.json
+
+          node <<'NODE'
+          const fs = require('fs');
+          const data = JSON.parse(fs.readFileSync('/tmp/neon.json','utf8'));
+          const connection = data.connection_string || data.connectionString || data.database_url || data.databaseUrl;
+          const claim = data.claim_url || data.claimUrl;
+          if (!connection) throw new Error('Neon response did not include a connection string');
+          if (!claim) throw new Error('Neon response did not include a claim URL');
+          fs.appendFileSync(process.env.GITHUB_ENV, `DATABASE_URL=${connection}\n`);
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `project_id=${data.project_id || data.projectId || ''}\n`);
+          fs.writeFileSync('/tmp/claim.json', JSON.stringify({
+            project_id: data.project_id || data.projectId || null,
+            claim_url: claim,
+            expires_at: data.expires_at || data.expiresAt || null,
+            created_at: new Date().toISOString()
+          }, null, 2));
+          console.log(`::add-mask::${connection}`);
+          console.log('Claimable Postgres created. Connection string masked.');
+          NODE
+
+      - name: Initialize DEADZONE ranking schema
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+          const { WeeklyRanking } = require('./ranking');
+          (async () => {
+            const ranking = new WeeklyRanking({ databaseUrl: process.env.DATABASE_URL });
+            await ranking.init();
+            if (!ranking.isPersistent() || !ranking.pool) throw new Error('Ranking did not enter persistent PostgreSQL mode');
+            await ranking.pool.query(fs.readFileSync('db/ranking_protection.sql', 'utf8'));
+            const tables = await ranking.pool.query("SELECT to_regclass('public.weekly_rankings') AS rankings, to_regclass('public.weekly_round_awards') AS awards, to_regclass('public.weekly_rankings_audit') AS audit");
+            if (!tables.rows[0].rankings || !tables.rows[0].awards || !tables.rows[0].audit) throw new Error('Ranking schema validation failed');
+            const blocked = await ranking.pool.query("SELECT count(*)::int AS n FROM pg_trigger WHERE tgname IN ('trg_deadzone_block_weekly_rankings_delete','trg_deadzone_block_round_awards_delete') AND NOT tgisinternal");
+            if (blocked.rows[0].n !== 2) throw new Error('Deletion protection triggers are missing');
+            await ranking.pool.end();
+            console.log('DEADZONE persistent ranking schema + protections: PASS');
+          })().catch(err => { console.error(err); process.exit(1); });
+          NODE
+
+      - name: Store claim instructions as protected artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deadzone-neon-claim
+          path: /tmp/claim.json
+          retention-days: 1
+          if-no-files-found: error
+
+      - name: Remove one-shot bootstrap workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/neon-free-bootstrap.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/workflows/neon-free-bootstrap.yml
+          git commit -m 'Complete Neon Free bootstrap [skip ci]'
+          git push origin HEAD:infra-neon-free
