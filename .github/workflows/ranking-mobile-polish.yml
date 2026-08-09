@@ -1,0 +1,42 @@
+name: Ranking mobile polish
+on:
+  push:
+    branches:
+      - feature-weekly-ranking
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature-weekly-ranking
+      - name: Patch trophy icon
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('public/index.html');s=p.read_text()
+          old="#shopBtn::before{content:'🛒';font-size:18px}#chatBtn::before{content:'💬';font-size:18px}"
+          new="#rankBtn::before{content:'🏆';font-size:18px}#shopBtn::before{content:'🛒';font-size:18px}#chatBtn::before{content:'💬';font-size:18px}"
+          assert old in s
+          p.write_text(s.replace(old,new,1))
+          PY
+      - name: Validate client
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,subprocess
+          h=Path('public/index.html').read_text();m=re.search(r'<script>(.*)</script>',h,re.S);assert m
+          Path('/tmp/client.js').write_text(m.group(1));subprocess.run(['node','--check','/tmp/client.js'],check=True)
+          assert "#rankBtn::before{content:'🏆'" in h
+          print('ranking mobile polish PASS')
+          PY
+      - name: Commit polish
+        run: |
+          rm -f .github/workflows/ranking-mobile-polish.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/index.html .github/workflows/ranking-mobile-polish.yml
+          git commit -m 'Polish weekly ranking button on mobile [skip ci]'
+          git push origin HEAD:feature-weekly-ranking
