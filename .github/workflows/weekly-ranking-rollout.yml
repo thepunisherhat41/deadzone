@@ -1,7 +1,8 @@
 name: Weekly ranking rollout
 on:
   push:
-    branches: [feature-weekly-ranking]
+    branches:
+      - feature-weekly-ranking
 permissions:
   contents: write
 jobs:
@@ -15,187 +16,30 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Patch server and mobile client
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          server=Path('server.js')
-          html=Path('public/index.html')
-          s=server.read_text()
-          h=html.read_text()
-
-          # ---------- SERVER ----------
-          marker="const { WebSocketServer } = require('ws');\n"
-          assert marker in s and "require('./ranking')" not in s
-          s=s.replace(marker, marker+"const { WeeklyRanking } = require('./ranking');\n", 1)
-          s=s.replace("const BUILD = 'v4-mobile-beta-2.2-gin10';", "const BUILD = 'v4-mobile-beta-2.3-weekly-ranking';", 1)
-
-          marker="const HEALTH_RESPAWN_MAX_MS = 20000;\n"
-          assert marker in s
-          s=s.replace(marker, marker+"\nconst ranking = new WeeklyRanking();\nfunction rankingSafe(promise) { Promise.resolve(promise).catch(err => console.error('[ranking]', err.message)); }\nlet roundStartedAt = Date.now();\n", 1)
-
-          marker="    kills: 0, deaths: 0,\n"
-          assert marker in s
-          s=s.replace(marker,"    kills: 0, deaths: 0,\n    roundKills: 0, roundDeaths: 0,\n    rankingKey: '',\n",1)
-
-          marker="function sessionTokenFromRequest(req) {\n"
-          assert marker in s
-          fn="""function playerTokenFromRequest(req) {
-  try {
-    const url = new URL(req.url || '/', 'http://deadzone.local');
-    const raw = String(url.searchParams.get('player') || '').trim();
-    return /^[a-zA-Z0-9_-]{20,128}$/.test(raw) ? raw : '';
-  } catch { return ''; }
-}
-
-"""
-          s=s.replace(marker,fn+marker,1)
-
-          marker="wss.on('connection', (ws, req) => {\n  const token = sessionTokenFromRequest(req);\n"
-          assert marker in s
-          s=s.replace(marker,"wss.on('connection', (ws, req) => {\n  const token = sessionTokenFromRequest(req);\n  const persistentPlayerToken = playerTokenFromRequest(req) || token;\n",1)
-
-          marker="  ws.playerId = id;\n  // Gin de 10 do Pedrin é gratuita, inclusive em sessão retomada.\n"
-          assert marker in s
-          s=s.replace(marker,"  ws.playerId = id;\n  player.rankingKey = ranking.playerKey(persistentPlayerToken);\n  rankingSafe(ranking.ensurePlayer(player));\n  // Gin de 10 do Pedrin é gratuita, inclusive em sessão retomada.\n",1)
-
-          old="ws.send(JSON.stringify({ type: 'init', id, sessionToken: token, resumed, build: BUILD, world: WORLD, weapons: WEAPONS, utilities: UTILITIES, skins: SKINS, map: currentMap(), killReward: KILL_REWARD, phase, timeLeft: Math.max(0, Math.round((phaseEndsAt - Date.now()) / 1000)) }));"
-          assert old in s
-          new="ws.send(JSON.stringify({ type: 'init', id, sessionToken: token, resumed, build: BUILD, world: WORLD, weapons: WEAPONS, utilities: UTILITIES, skins: SKINS, map: currentMap(), killReward: KILL_REWARD, rankingPersistent: ranking.isPersistent(), phase, timeLeft: Math.max(0, Math.round((phaseEndsAt - Date.now()) / 1000)) }));"
-          s=s.replace(old,new,1)
-
-          marker="        pl.name = String(msg.name || '').replace(/[\\x00-\\x1F\\x7F<>]/g, '').trim().slice(0, 12) || pl.name;\n"
-          assert marker in s
-          s=s.replace(marker,marker+"        rankingSafe(ranking.updateName(pl));\n",1)
-
-          marker="      case 'chat':\n        handleChat(pl, msg.text);\n        break;\n"
-          assert marker in s
-          repl=marker+"      case 'rankingRequest':\n        ranking.snapshot(pl, 10).then(data => { if (ws.readyState === 1) ws.send(JSON.stringify({ type: 'ranking', ...data })); }).catch(err => console.error('[ranking]', err.message));\n        break;\n"
-          s=s.replace(marker,repl,1)
-
-          marker="    target.deaths++;\n    target.points += DEATH_REWARD;"
-          assert marker in s
-          s=s.replace(marker,"    target.deaths++;\n    target.roundDeaths++;\n    rankingSafe(ranking.recordDeath(target));\n    target.points += DEATH_REWARD;",1)
-          marker="      attacker.kills++;\n      attacker.points += KILL_REWARD;"
-          assert marker in s
-          s=s.replace(marker,"      attacker.kills++;\n      attacker.roundKills++;\n      rankingSafe(ranking.recordKill(attacker));\n      attacker.points += KILL_REWARD;",1)
-
-          marker="function startVoting() {\n  phase = 'voting';\n"
-          assert marker in s
-          award="""function startVoting() {
-  const rankingParticipants = [...players.values()]
-    .filter(p => p.connected && !isSpectating(p))
-    .map(p => ({ id:p.id, name:p.name, rankingKey:p.rankingKey, roundKills:p.roundKills||0, roundDeaths:p.roundDeaths||0 }));
-  rankingSafe(ranking.recordRound(String(roundStartedAt), rankingParticipants));
-  phase = 'voting';
-"""
-          s=s.replace(marker,award,1)
-
-          marker="  roundNumber++;\n  currentMapIndex = Math.floor(Math.random() * MAPS.length);\n"
-          assert marker in s
-          s=s.replace(marker,"  roundNumber++;\n  roundStartedAt = Date.now();\n  currentMapIndex = Math.floor(Math.random() * MAPS.length);\n",1)
-          marker="    resetInput(pl);\n    const spectating = isSpectating(pl);\n"
-          assert marker in s
-          s=s.replace(marker,"    resetInput(pl);\n    pl.roundKills = 0; pl.roundDeaths = 0;\n    const spectating = isSpectating(pl);\n",1)
-
-          old="res.end(JSON.stringify({ ok: true, build: BUILD, players: [...players.values()].filter(p => p.connected).length }));"
-          assert old in s
-          s=s.replace(old,"res.end(JSON.stringify({ ok: true, build: BUILD, players: [...players.values()].filter(p => p.connected).length, ranking: ranking.isPersistent() ? 'postgres' : 'memory' }));",1)
-
-          old="server.listen(PORT, () => console.log(`DEADZONE rodando na porta ${PORT} — mapa: ${currentMap().name}`));"
-          assert old in s
-          s=s.replace(old,"ranking.init().catch(err => console.error('[ranking] init:', err.message)).finally(() => {\n  server.listen(PORT, () => console.log(`DEADZONE rodando na porta ${PORT} — mapa: ${currentMap().name} — ranking: ${ranking.isPersistent() ? 'postgres' : 'memory'}`));\n});",1)
-          server.write_text(s)
-
-          # ---------- CLIENT ----------
-          css_marker="  #shopBox, #voteCard { touch-action: pan-y; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }\n"
-          assert css_marker in h
-          ranking_css="""
-  #rankingPanel{position:fixed;inset:0;z-index:28;display:none;align-items:center;justify-content:center;padding:max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom));background:rgba(3,6,12,.88)}
-  #rankingCard{width:min(520px,96vw);max-height:88dvh;display:flex;flex-direction:column;background:linear-gradient(180deg,#171c28,#0c111b);border:1px solid rgba(255,210,59,.45);border-radius:22px;box-shadow:0 24px 70px rgba(0,0,0,.55);overflow:hidden;touch-action:pan-y}
-  #rankingHeader{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 12px;border-bottom:1px solid rgba(255,255,255,.08)}
-  #rankingHeader h2{color:#ffd23b;font-size:20px;letter-spacing:1px}#rankingClose{border:0;background:#2b3140;color:white;width:38px;height:38px;border-radius:12px;font-size:18px;font-weight:900}
-  #rankingBody{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 14px 18px;touch-action:pan-y}
-  .rankWeek{color:#98aac0;font-size:11px;font-weight:800;margin-bottom:8px}.rankPersist{font-size:10px;padding:6px 8px;border-radius:9px;background:rgba(74,222,95,.1);color:#a8f5b3;margin-bottom:10px}.rankPersist.temp{background:rgba(255,210,59,.1);color:#ffe080}
-  .rankRow{display:grid;grid-template-columns:38px minmax(0,1fr) auto;gap:8px;align-items:center;padding:10px 9px;border-radius:12px;background:rgba(255,255,255,.045);margin-bottom:7px;border:1px solid rgba(255,255,255,.055)}.rankRow.me{border-color:#ffd23b;background:rgba(255,210,59,.08)}
-  .rankPos{font-weight:1000;color:#ffd23b;text-align:center}.rankName{min-width:0;color:#fff;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rankMeta{display:block;color:#8fa1b6;font-size:10px;font-weight:700;margin-top:2px}.rankRp{color:#ffd23b;font-weight:1000;text-align:right}.rankMine{margin-top:13px;padding-top:11px;border-top:1px solid rgba(255,255,255,.08)}.rankMineTitle,.rankRulesTitle{color:#9fc4e8;font-size:10px;font-weight:950;letter-spacing:1.5px;margin-bottom:7px}.rankRules{margin-top:12px;color:#b9c6d5;font-size:11px;line-height:1.55}.rankEmpty{padding:28px 10px;text-align:center;color:#8fa1b6}.rankLoading{padding:28px;text-align:center;color:#dce8f4}
-"""
-          h=h.replace(css_marker,css_marker+ranking_css,1)
-
-          marker='''<div id="topRight">
-  <button class="iconbtn" id="shopBtn">🛒 Loja</button>
-  <button class="iconbtn" id="chatBtn">💬 Chat</button>
-</div>
-'''
-          assert marker in h
-          h=h.replace(marker,'''<div id="topRight">
-  <button class="iconbtn" id="rankBtn" title="Ranking semanal" aria-label="Ranking semanal">🏆</button>
-  <button class="iconbtn" id="shopBtn">🛒 Loja</button>
-  <button class="iconbtn" id="chatBtn">💬 Chat</button>
-</div>
-''',1)
-
-          marker='''<div id="dead">
-'''
-          assert marker in h
-          panel='''<div id="rankingPanel">
-  <div id="rankingCard">
-    <div id="rankingHeader"><h2>🏆 RANKING SEMANAL</h2><button id="rankingClose" aria-label="Fechar ranking">✕</button></div>
-    <div id="rankingBody"><div class="rankLoading">Carregando ranking...</div></div>
-  </div>
-</div>
-
-'''
-          h=h.replace(marker,panel+marker,1)
-
-          marker="if (!sessionToken || sessionToken.length < 20) {\n  sessionToken = createSessionToken();\n  try { localStorage.setItem('deadzone_session_token', sessionToken); } catch {}\n}\n"
-          assert marker in h
-          player_token=marker+"\nlet playerToken = '';\ntry { playerToken = localStorage.getItem('deadzone_player_token') || ''; } catch {}\nif (!playerToken || playerToken.length < 20) {\n  playerToken = createSessionToken();\n  try { localStorage.setItem('deadzone_player_token', playerToken); } catch {}\n}\n"
-          h=h.replace(marker,player_token,1)
-
-          old="const proto=location.protocol==='https:'?'wss':'ws',socket=new WebSocket(`${proto}://${location.host}?session=${encodeURIComponent(sessionToken)}`);"
-          assert old in h
-          new="const proto=location.protocol==='https:'?'wss':'ws',socket=new WebSocket(`${proto}://${location.host}?session=${encodeURIComponent(sessionToken)}&player=${encodeURIComponent(playerToken)}`);"
-          h=h.replace(old,new,1)
-
-          marker="else if(msg.type==='ping')send({type:'pong'});"
-          assert marker in h
-          h=h.replace(marker,"else if(msg.type==='ranking'){renderRanking(msg)}"+marker,1)
-
-          # add ranking functions before icon section
-          marker="// ---- Ícones vetoriais do arsenal ----\n"
-          assert marker in h
-          funcs="""// ---- Ranking semanal ----
-function rankMedal(pos){return pos===1?'🥇':pos===2?'🥈':pos===3?'🥉':`#${pos}`}
-function rankRowHtml(r,isMe=false){if(!r)return'';return `<div class="rankRow${isMe?' me':''}"><div class="rankPos">${rankMedal(r.rank)}</div><div class="rankName">${escapeHtml(r.name)}${isMe?' (você)':''}<span class="rankMeta">${r.kills} kills • ${r.rounds} partidas • ${r.wins} vitórias</span></div><div class="rankRp">${r.rp}<br><span class="rankMeta">RP</span></div></div>`}
-function renderRanking(data){const body=document.getElementById('rankingBody');if(!body)return;const top=(data.top||[]).map(r=>rankRowHtml(r,data.me&&r.rank===data.me.rank&&r.name===data.me.name)).join('');const me=data.me?`<div class="rankMine"><div class="rankMineTitle">SUA COLOCAÇÃO</div>${rankRowHtml(data.me,true)}</div>`:'';const persist=data.persistent?'<div class="rankPersist">● Ranking persistente conectado</div>':'<div class="rankPersist temp">⚠ Ranking temporário: conecte PostgreSQL para sobreviver a restart/deploy.</div>';body.innerHTML=`<div class="rankWeek">Semana iniciada em ${escapeHtml(data.weekStart||'')} • reset: segunda-feira 00:00</div>${persist}${top||'<div class="rankEmpty">Ainda não há pontuação nesta semana.</div>'}${me}<div class="rankRules"><div class="rankRulesTitle">COMO GANHAR RP</div>💀 Kill: +${data.rules?.kill??10} RP<br>🎮 Completar rodada: +${data.rules?.round??3} RP<br>🥇 1º: +${data.rules?.first??15} • 🥈 2º: +${data.rules?.second??8} • 🥉 3º: +${data.rules?.third??5}</div>`}
-function openRanking(){document.getElementById('rankingPanel').style.display='flex';document.getElementById('rankingBody').innerHTML='<div class="rankLoading">Carregando ranking...</div>';send({type:'rankingRequest'})}
-function closeRanking(){document.getElementById('rankingPanel').style.display='none'}
-setTimeout(()=>{const rb=document.getElementById('rankBtn'),rc=document.getElementById('rankingClose'),rp=document.getElementById('rankingPanel');if(rb)rb.onclick=openRanking;if(rc)rc.onclick=closeRanking;if(rp)rp.addEventListener('click',e=>{if(e.target===rp)closeRanking()})},0);
-
-"""
-          h=h.replace(marker,funcs+marker,1)
-          html.write_text(h)
-          PY
+      - name: Apply ranking patch
+        run: python3 scripts/patch_weekly_ranking.py
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-      - name: Validate syntax and ranking logic
-        shell: bash
+      - name: Validate syntax
         run: |
           node --check server.js
           node --check ranking.js
           python3 - <<'PY'
           from pathlib import Path
           import re, subprocess
-          h=Path('public/index.html').read_text();m=re.search(r'<script>(.*)</script>',h,re.S);assert m
-          Path('/tmp/client.js').write_text(m.group(1));subprocess.run(['node','--check','/tmp/client.js'],check=True)
+          h=Path('public/index.html').read_text()
+          m=re.search(r'<script>(.*)</script>',h,re.S)
+          assert m
+          Path('/tmp/client.js').write_text(m.group(1))
+          subprocess.run(['node','--check','/tmp/client.js'],check=True)
           combined=Path('server.js').read_text()+h+Path('ranking.js').read_text()
-          checks=["WeeklyRanking","rankingRequest","type: 'ranking'","roundKills","recordKill","recordRound","deadzone_player_token","rankBtn","RANKING SEMANAL","DATABASE_URL","weekly_rankings","KILL_RP = 10","ROUND_RP = 3"]
+          checks=['WeeklyRanking','rankingRequest',"type: 'ranking'",'roundKills','recordKill','recordRound','deadzone_player_token','rankBtn','RANKING SEMANAL','DATABASE_URL','weekly_rankings','KILL_RP = 10','ROUND_RP = 3']
           missing=[x for x in checks if x not in combined]
           if missing: raise SystemExit('missing ranking markers: '+repr(missing))
           print('weekly ranking static validation PASS')
           PY
+      - name: Validate ranking runtime
+        run: |
           node - <<'NODE'
           const {WeeklyRanking,currentWeekStart}=require('./ranking');
           (async()=>{
@@ -204,22 +48,21 @@ setTimeout(()=>{const rb=document.getElementById('rankBtn'),rc=document.getEleme
             const b={id:2,name:'B',rankingKey:r.playerKey('bbbbbbbbbbbbbbbbbbbb'),roundKills:1,roundDeaths:2};
             await r.ensurePlayer(a); await r.ensurePlayer(b);
             await r.recordKill(a); await r.recordKill(a); await r.recordKill(a); await r.recordKill(b);
-            await r.recordDeath(a); await r.recordRound('test-round', [a,b]); await r.recordRound('test-round', [a,b]);
+            await r.recordDeath(a); await r.recordRound('test-round',[a,b]); await r.recordRound('test-round',[a,b]);
             const snap=await r.snapshot(a,10);
             if(snap.top[0].name!=='A') throw new Error('leader wrong');
             if(snap.top[0].rp!==48) throw new Error('A RP expected 48, got '+snap.top[0].rp);
             if(snap.top[1].rp!==21) throw new Error('B RP expected 21, got '+snap.top[1].rp);
             if(snap.top[0].rounds!==1) throw new Error('round idempotency failed');
             if(snap.me.rank!==1) throw new Error('self rank failed');
-            console.log('weekly ranking runtime PASS', currentWeekStart(), snap.top);
+            console.log('weekly ranking runtime PASS',currentWeekStart(),snap.top);
           })().catch(e=>{console.error(e);process.exit(1)});
           NODE
       - name: Commit patched build
-        shell: bash
         run: |
-          rm -f .github/workflows/weekly-ranking-rollout.yml
+          rm -f .github/workflows/weekly-ranking-rollout.yml scripts/patch_weekly_ranking.py
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add server.js public/index.html ranking.js package.json package-lock.json .github/workflows/weekly-ranking-rollout.yml
+          git add server.js public/index.html ranking.js package.json package-lock.json .github/workflows/weekly-ranking-rollout.yml scripts/patch_weekly_ranking.py
           git commit -m 'Add weekly competitive ranking system [skip ci]'
           git push origin HEAD:feature-weekly-ranking
