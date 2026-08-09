@@ -6,7 +6,7 @@ const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 
 const PORT = process.env.PORT || 3000;
-const BUILD = 'v4-mobile-beta-2.1-fluid-controls';
+const BUILD = 'v4-mobile-beta-2.2-gin10';
 
 const server = http.createServer((req, res) => {
   let pathname = '/';
@@ -80,6 +80,12 @@ const WEAPONS = {
     damage: 24, cooldown: 320, speed: 15, range: 520, pellets: 1, hitRadius: 19,
     tint: '#ff5fa2', description: 'Arremesso médio, simples e confiável.'
   },
+  gin10: {
+  name: 'Gin de 10 do Pedrin', emoji: '🥤', icon: 'gin10', cost: 0,
+  damage: 12, cooldown: 420, speed: 17, range: 560, pellets: 1, hitRadius: 22,
+  tint: '#ff2f68',
+  description: 'Arma poderosa de um bêbado. Arremessa um copo de gin de 10: pouco dano, alcance médio e não atravessa paredes.'
+},
   dracarys: {
     name: 'Dracarys da Bubu', emoji: '🔥', icon: 'dracarys', cost: 0,
     damage: 11, cooldown: 190, speed: 12, range: 245, pellets: 5, spread: 0.20, hitRadius: 22,
@@ -258,7 +264,7 @@ function makePlayer(id, name) {
     x: p.x, y: p.y, angle: 0,
     hp: MAX_HP, maxHp: MAX_HP, alive: true,
     weapon: 'chinelo',
-    owned: { chinelo: true, grito: true },  // ambas grátis desde o início
+    owned: { chinelo: true, gin10: true, grito: true },  // armas grátis desde o início
     skin: 'bean',
     ownedSkins: { bean: true },
     armor: 0,
@@ -362,6 +368,8 @@ wss.on('connection', (ws, req) => {
     sessions.set(token, id);
   }
   ws.playerId = id;
+  // Gin de 10 do Pedrin é gratuita, inclusive em sessão retomada.
+  player.owned.gin10 = true;
 
   ws.send(JSON.stringify({ type: 'init', id, sessionToken: token, resumed, build: BUILD, world: WORLD, weapons: WEAPONS, utilities: UTILITIES, skins: SKINS, map: currentMap(), killReward: KILL_REWARD, phase, timeLeft: Math.max(0, Math.round((phaseEndsAt - Date.now()) / 1000)) }));
 

@@ -565,6 +565,8 @@ function shoutVado() {
 const sound = {
   // chinelo: vento do arremesso + tapa seco
   chinelo: () => { noise(0.10, 0.07, 'highpass', 1400); setTimeout(()=>tone(150,0.06,'triangle',0.12,90),45); },
+  // Gin de 10 do Pedrin: copo plástico, gelo e líquido chacoalhando
+  gin10:   () => { noise(0.10,0.04,'bandpass',1300); tone(390,0.045,'triangle',0.055,250); setTimeout(()=>noise(0.09,0.035,'highpass',2100),45); },
   // grito: voz "VAAAAADO" + corpo vocal sintético
   grito:   () => shoutVado(),
   // escova de cabelo: plástico batendo + raspado das cerdas
@@ -638,13 +640,28 @@ function send(o){if(ws&&ws.readyState===WebSocket.OPEN){try{ws.send(JSON.stringi
 try{const n=localStorage.getItem('deadzone_last_name');if(n)document.getElementById('nameInput').value=n}catch{}(function(){const n=document.getElementById('lvlnote');if(n)n.textContent=profile.level>1?`🔥 Bem-vindo de volta! Você é nível ${profile.level}`:''})();document.getElementById('playBtn').onclick=()=>{myName=document.getElementById('nameInput').value.trim()||'Player';try{localStorage.setItem('deadzone_last_name',myName)}catch{}initAudio();profile.level=levelFromXp(profile.xp);updateLevelUI();playRequested=true;joinedOnce=false;connectAttempt=0;reconnectDelay=800;setPlayLoading(true);setStartStatus('Preparando sua entrada...');connect()};window.addEventListener('online',()=>{if(playRequested){setNetStatus('RECONECTANDO...',true);connect()}});window.addEventListener('offline',()=>setNetStatus('SEM INTERNET',true));document.addEventListener('visibilitychange',()=>{if(document.hidden)pauseLocalControls();else if(playRequested&&(!ws||ws.readyState!==WebSocket.OPEN))connect()});window.addEventListener('pagehide',pauseLocalControls);window.addEventListener('blur',pauseLocalControls);
 
 // ---- Ícones vetoriais do arsenal ----
-const WEAPON_ICON_KIND={chinelo:'chinelo',grito:'grito',escova:'escova',coco:'coco',espada:'espada',peido:'peido',lilika:'lilika',dracarys:'dracarys'};
+const WEAPON_ICON_KIND={chinelo:'chinelo',gin10:'gin10',grito:'grito',escova:'escova',coco:'coco',espada:'espada',peido:'peido',lilika:'lilika',dracarys:'dracarys'};
 function weaponIconSvg(key){key=WEAPON_ICON_KIND[key]||key;const open='<svg viewBox="0 0 64 64" aria-hidden="true">';
   if (key === 'chinelo') return open + `
     <g transform="rotate(-24 32 32)">
       <path d="M23 8c7-2 15 0 18 6 4 8 1 20-3 31-3 8-8 12-14 10-6-2-7-9-5-18 2-10 1-18 4-29z" fill="#ff68ad" stroke="#a91d61" stroke-width="3"/>
       <path d="M25 24c5 0 9 2 12 7M25 24c-2 4-3 8-4 12" fill="none" stroke="#ffe4f2" stroke-width="3" stroke-linecap="round"/>
       <circle cx="25" cy="24" r="2.4" fill="#ffe4f2"/>
+    </g></svg>`;
+  if (key === 'gin10') return open + `
+    <g transform="rotate(-4 32 32)">
+      <path d="M18 13h30l-3 42c-.3 4-3 6-7 6H28c-4 0-7-2-7-6z" fill="rgba(238,249,255,.42)" stroke="#d8f2ff" stroke-width="2.5"/>
+      <path d="M21 30h24l-2 25c-.2 2-2 3-4 3H28c-2 0-4-1-4-3z" fill="#ff1759" opacity=".93"/>
+      <path d="M22 28c6 3 15 3 22 0" fill="none" stroke="#ff79a3" stroke-width="2" opacity=".9"/>
+      <g fill="rgba(255,255,255,.78)" stroke="rgba(188,222,240,.8)" stroke-width="1">
+        <rect x="25" y="19" width="8" height="7" rx="2" transform="rotate(-14 29 22.5)"/>
+        <rect x="35" y="18" width="8" height="8" rx="2" transform="rotate(12 39 22)"/>
+        <rect x="29" y="27" width="7" height="6" rx="2" transform="rotate(8 32.5 30)"/>
+      </g>
+      <path d="M43 5L35 37" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/>
+      <path d="M17 12h32" stroke="#f3fbff" stroke-width="3" stroke-linecap="round"/>
+      <rect x="27" y="39" width="12" height="7" rx="3.5" fill="rgba(20,15,20,.38)"/>
+      <text x="33" y="44" text-anchor="middle" font-size="6" font-weight="900" fill="#fff">10</text>
     </g></svg>`;
   if (key === 'grito') return open + `
     <path d="M10 27h13l18-12v34L23 37H10z" fill="#77ddff" stroke="#176d91" stroke-width="3"/>
@@ -1079,6 +1096,18 @@ function drawFlipFlopSprite(x, y, scale, rot) {
   ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(5,-4); ctx.moveTo(0,0); ctx.lineTo(-5,-4); ctx.stroke();
   ctx.restore();
 }
+function drawGinCupSprite(x, y, scale, rot) {
+  ctx.save(); ctx.translate(x,y); ctx.rotate(rot||0); ctx.scale(scale,scale);
+  ctx.fillStyle='rgba(225,246,255,.28)'; ctx.strokeStyle='#d8f2ff'; ctx.lineWidth=1.7;
+  ctx.beginPath(); ctx.moveTo(-10,-14); ctx.lineTo(10,-14); ctx.lineTo(8,14); ctx.quadraticCurveTo(0,17,-8,14); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle='rgba(255,23,89,.92)'; ctx.beginPath(); ctx.moveTo(-9,-1); ctx.lineTo(9,-1); ctx.lineTo(7.5,13); ctx.quadraticCurveTo(0,15,-7.5,13); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle='#ff86ad'; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(-8,-2); ctx.quadraticCurveTo(0,1,8,-2); ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,.72)'; ctx.strokeStyle='rgba(186,222,240,.75)'; ctx.lineWidth=.8;
+  for(const [ix,iy,r] of [[-4,-7,-.14],[3,-8,.12],[0,-3,.08]]) { ctx.save();ctx.translate(ix,iy);ctx.rotate(r);roundRect(-3,-3,6,6,1.5);ctx.fill();ctx.stroke();ctx.restore(); }
+  ctx.strokeStyle='#fff'; ctx.lineWidth=2.2; ctx.lineCap='round'; ctx.beginPath();ctx.moveTo(5,-18);ctx.lineTo(0,5);ctx.stroke();
+  ctx.fillStyle='rgba(25,15,22,.45)'; roundRect(-5,5,10,6,3);ctx.fill(); ctx.fillStyle='#fff';ctx.font='900 5px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('10',0,8);
+  ctx.restore();
+}
 function drawHairBrushSprite(x, y, scale, rot) {
   ctx.save(); ctx.translate(x, y); ctx.rotate(rot || 0); ctx.scale(scale, scale);
   ctx.fillStyle = '#f43591'; ctx.strokeStyle = '#9f155e'; ctx.lineWidth = 2;
@@ -1149,7 +1178,7 @@ function drawArmorVestLocal(p, compact) {
   ctx.restore();
 }
 
-function drawHeldWeapon(key){if(key==='dracarys'){drawFlameSprite(20,0,.72,0)}else if (key === 'grito') {
+function drawHeldWeapon(key){if(key==='dracarys'){drawFlameSprite(20,0,.72,0)}else if(key==='gin10'){drawGinCupSprite(20,0,.72,-.08)}else if (key === 'grito') {
     ctx.fillStyle = '#77ddff'; ctx.strokeStyle='#176d91'; ctx.lineWidth=1.5;
     ctx.beginPath(); ctx.moveTo(11,-4); ctx.lineTo(25,-8); ctx.lineTo(25,8); ctx.lineTo(11,4); ctx.closePath(); ctx.fill(); ctx.stroke();
     ctx.strokeStyle='#bff3ff'; ctx.beginPath(); ctx.arc(25,0,7,-.7,.7); ctx.stroke();
@@ -1525,6 +1554,11 @@ function draw(frameTs = performance.now()) {
       ctx.strokeStyle='rgba(200,92,255,.28)'; ctx.lineWidth=4; ctx.beginPath();ctx.moveTo(-30,0);ctx.lineTo(-13,0);ctx.stroke();
       ctx.rotate(animTime*14 + (b.x+b.y)*.015);
       drawLilikaSprite(0,0,.72,0);
+    } else if (wpn === 'gin10') {
+    ctx.strokeStyle='rgba(255,47,104,.28)'; ctx.lineWidth=3; ctx.beginPath();ctx.moveTo(-26,0);ctx.lineTo(-10,0);ctx.stroke();
+    ctx.rotate(animTime*11 + (b.x+b.y)*.012);
+    drawGinCupSprite(0,0,.78,0);
+    ctx.fillStyle='rgba(255,23,89,.42)'; ctx.beginPath();ctx.arc(-14,4,2.2,0,Math.PI*2);ctx.arc(-21,-2,1.6,0,Math.PI*2);ctx.fill();
     } else if (wpn === 'espada') {
       // Espada-de-São-Jorge: folha real, não espada metálica.
       drawSnakeLeafSprite(0,0,.95,0);
