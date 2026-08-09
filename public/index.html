@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>DEADZONE</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-user-select: none; user-select: none; }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
   html, body { width: 100%; height: 100%; overflow: hidden; background: #0d0d12; font-family: system-ui, sans-serif; }
   #game { display: block; touch-action: none; }
   #stick, #aimStick, #bombBtn { touch-action: none; }
@@ -142,12 +142,12 @@
 
   #stick { position: fixed; bottom: max(30px, env(safe-area-inset-bottom)); left: 30px; width: 130px; height: 130px; z-index: 10; transition: opacity .2s; }
   #stickBase { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle,rgba(255,255,255,.08),rgba(255,255,255,.025)); border: 2px solid rgba(255,255,255,.18); box-shadow: inset 0 0 24px rgba(0,0,0,.24), 0 8px 30px rgba(0,0,0,.18); }
-  #stickKnob { position: absolute; width: 58px; height: 58px; left: 36px; top: 36px; border-radius: 50%; background: radial-gradient(circle at 35% 30%,#d55265,#9f2639); border: 2px solid rgba(255,255,255,.42); box-shadow: 0 5px 14px rgba(0,0,0,.32); }
+  #stickKnob { position: absolute; width: 58px; height: 58px; left: 36px; top: 36px; border-radius: 50%; will-change: transform; transform: translate3d(0,0,0); background: radial-gradient(circle at 35% 30%,#d55265,#9f2639); border: 2px solid rgba(255,255,255,.42); box-shadow: 0 5px 14px rgba(0,0,0,.32); }
 
   #actions { position: fixed; bottom: max(30px, env(safe-area-inset-bottom)); right: 30px; z-index: 10; display: flex; flex-direction: column; gap: 12px; align-items: center; transition: opacity .2s; }
   #aimStick { position: relative; width: 150px; height: 150px; }
   #aimBase { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle,rgba(255,59,82,.17),rgba(255,59,82,.04)); border: 3px solid rgba(255,59,82,.58); box-shadow: inset 0 0 28px rgba(255,59,82,.08); }
-  #aimKnob { position: absolute; width: 74px; height: 74px; left: 38px; top: 38px; border-radius: 50%; background: linear-gradient(180deg,#ff5065,#df263d); border: 3px solid rgba(255,255,255,.58); box-shadow: 0 5px 0 #991827, 0 9px 22px rgba(0,0,0,.25); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  #aimKnob { position: absolute; width: 74px; height: 74px; left: 38px; top: 38px; border-radius: 50%; will-change: transform; transform: translate3d(0,0,0); background: linear-gradient(180deg,#ff5065,#df263d); border: 3px solid rgba(255,255,255,.58); box-shadow: 0 5px 0 #991827, 0 9px 22px rgba(0,0,0,.25); display: flex; align-items: center; justify-content: center; overflow: hidden; }
   #aimKnob .weaponIcon { width: 44px; height: 44px; }
   #aimHint { position: fixed; bottom: 194px; right: 30px; width: 150px; text-align: center; color: rgba(255,255,255,.52); font-size: 11px; z-index: 10; pointer-events: none; text-shadow: 0 1px 3px #000; }
 
@@ -435,11 +435,11 @@
 
 <script>
 const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d');
+const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
+const COARSE_POINTER = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
 let W, H, DPR = 1;
 function resize() {
-  const coarse=window.matchMedia&&window.matchMedia('(pointer: coarse)').matches;
-  DPR=Math.min(window.devicePixelRatio||1,coarse?1.5:2);
+  DPR=Math.min(window.devicePixelRatio||1,COARSE_POINTER?1.5:2);
   W = window.innerWidth; H = window.innerHeight;
   canvas.width = W * DPR; canvas.height = H * DPR;
   canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
@@ -613,7 +613,7 @@ function spawnHeal(x, y) {
   }
 }
 function spawnExplosion(x, y, radius) {
-  const count = 44;
+  const count = COARSE_POINTER ? 30 : 44;
   for (let i = 0; i < count; i++) {
     const a = Math.random() * Math.PI * 2, sp = 2 + Math.random() * 7;
     particles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 1, r: 3 + Math.random() * 6, type: i % 3 === 0 ? 'smoke' : 'fire' });
@@ -632,7 +632,7 @@ const startStatusEl=document.getElementById('startStatus'),netStatusEl=document.
 function setStartStatus(t,c=''){if(startStatusEl){startStatusEl.className=c;startStatusEl.textContent=t||''}}function setNetStatus(t,w=false){if(netStatusEl){netStatusEl.textContent=t;netStatusEl.className=(t&&t!=='ONLINE'?'show':'')+(w?' warn':'')}}function setPlayLoading(on){if(playBtnEl){playBtnEl.classList.toggle('loading',!!on);playBtnEl.disabled=!!on;playBtnEl.textContent=on?'ENTRANDO...':'JOGAR ▶'}}
 function scheduleReconnect(){if(!playRequested||reconnectTimer)return;const wait=Math.min(5000,reconnectDelay+Math.floor(Math.random()*250));reconnectTimer=setTimeout(()=>{reconnectTimer=null;reconnectDelay=Math.min(5000,Math.round(reconnectDelay*1.55));connect()},wait)}
 function enterArena(){if(joinedOnce)return;joinedOnce=true;setPlayLoading(false);setStartStatus('Conectado. Boa sorte!','ok');setTimeout(()=>document.getElementById('start').style.display='none',100)}
-function pauseLocalControls(){input.up=input.down=input.left=input.right=false;try{stopAutoFire();aiming=false;centerJoystick(stick,knob);centerJoystick(aimStick,aimKnob)}catch{}send({type:'pause'})}
+function pauseLocalControls(){input.up=input.down=input.left=input.right=false;try{resetMobileControls(true)}catch{}send({type:'pause'})}
 function connect(){if(!playRequested)return;if(ws&&(ws.readyState===WebSocket.OPEN||ws.readyState===WebSocket.CONNECTING))return;connectAttempt++;setNetStatus('CONECTANDO...',true);if(!joinedOnce)setStartStatus(connectAttempt===1?'Conectando ao servidor...':'Servidor acordando. Tentando novamente...',connectAttempt>1?'warn':'');const proto=location.protocol==='https:'?'wss':'ws',socket=new WebSocket(`${proto}://${location.host}?session=${encodeURIComponent(sessionToken)}`);ws=socket;const watchdog=setTimeout(()=>{if(ws===socket&&socket.readyState!==WebSocket.CLOSED&&!joinedOnce){setStartStatus('A conexão demorou. Reconectando...','warn');try{socket.close()}catch{}}},9000);socket.onopen=()=>{reconnectDelay=800;setNetStatus('SINCRONIZANDO...');if(!joinedOnce)setStartStatus('Servidor online. Sincronizando arena...')};socket.onmessage=ev=>{let msg;try{msg=JSON.parse(ev.data)}catch{return}if(msg.type==='init'){clearTimeout(watchdog);myId=msg.id;world=msg.world;weapons=msg.weapons;utilities=msg.utilities||{};skins=msg.skins||{};gameMap=msg.map;currentMapName=(msg.map&&msg.map.name)||'';if(msg.sessionToken){sessionToken=msg.sessionToken;try{localStorage.setItem('deadzone_session_token',sessionToken)}catch{}}resumePending=!!msg.resumed;buildWeaponBar();buildShop();send({type:'setName',name:myName,level:profile.level});setNetStatus('ONLINE')}else if(msg.type==='state'){state=msg;myData=state.players.find(p=>p.id===myId)||myData;if(myData){currentWeapon=myData.weapon||currentWeapon;setAimWeaponIcon(currentWeapon);if(!joinedOnce)enterArena()}if(resumePending&&myData){resumePending=false;flashMsg('🔄 Sessão retomada. Você voltou de onde parou.')}for(const p of state.players){if(!render[p.id])render[p.id]={x:p.x,y:p.y};render[p.id].tx=p.x;render[p.id].ty=p.y}for(const id in render)if(!state.players.find(p=>p.id==id))delete render[id];if(msg.events)for(const e of msg.events){if(e.kind==='hit'){spawnBlood(e.x,e.y,e.angle,8);shake=Math.min(shake+3,10);sound.hit()}else if(e.kind==='armorHit'){spawnArmorSpark(e.x,e.y);sound.armor()}else if(e.kind==='bombExplosion'){spawnExplosion(e.x,e.y,e.radius||150);shake=Math.min(shake+10,16);sound.bomb()}else if(e.kind==='heal'){spawnHeal(e.x,e.y);if(e.player===myId){sound.heal();flashMsg(`🔥 Churrasco da Mamãe Márcia: +${e.amount||0} HP`)}}else if(e.kind==='death'){addDeathPool(e.x,e.y);sound.death()}else if(e.kind==='spark')spawnSpark(e.x,e.y);else if(e.kind==='muzzle'){muzzles.push({x:e.x,y:e.y,angle:e.angle,weapon:e.weapon||'chinelo',life:1});const me=state.players.find(p=>p.id===myId);if(me&&Math.hypot(me.x-e.x,me.y-e.y)<900)sound.shoot(e.weapon||'chinelo')}else if(e.kind==='kill'){auras.push({id:e.killer,life:1.4});if(e.killer===myId)addXp(60)}}if(msg.chat&&msg.chat.length)for(const c of msg.chat)addChat(c);refreshWeaponBar();refreshShop();updateVoteUI();updateSpectatorUI()}else if(msg.type==='newMap'){gameMap=msg.map;currentMapName=msg.name||(msg.map&&msg.map.name)||''}else if(msg.type==='ping')send({type:'pong'});else if(msg.type==='buyResult'){if(msg.ok){currentWeapon=msg.weapon;setAimWeaponIcon(currentWeapon);sound.buy();flashMsg('Comprado! '+weapons[msg.weapon].name)}else flashMsg('❌ '+msg.reason)}else if(msg.type==='shopResult'){if(msg.ok){sound.buy();flashMsg(msg.message||'Compra realizada!')}else flashMsg('❌ '+(msg.reason||'não foi possível comprar'))}};socket.onerror=()=>{setNetStatus('CONEXÃO INSTÁVEL',true);if(!joinedOnce)setStartStatus('Conexão instável. Tentando novamente...','warn')};socket.onclose=()=>{clearTimeout(watchdog);if(ws!==socket)return;setNetStatus('RECONECTANDO...',true);pauseLocalControls();scheduleReconnect()}}
 function send(o){if(ws&&ws.readyState===WebSocket.OPEN){try{ws.send(JSON.stringify(o))}catch{}}}
 try{const n=localStorage.getItem('deadzone_last_name');if(n)document.getElementById('nameInput').value=n}catch{}(function(){const n=document.getElementById('lvlnote');if(n)n.textContent=profile.level>1?`🔥 Bem-vindo de volta! Você é nível ${profile.level}`:''})();document.getElementById('playBtn').onclick=()=>{myName=document.getElementById('nameInput').value.trim()||'Player';try{localStorage.setItem('deadzone_last_name',myName)}catch{}initAudio();profile.level=levelFromXp(profile.xp);updateLevelUI();playRequested=true;joinedOnce=false;connectAttempt=0;reconnectDelay=800;setPlayLoading(true);setStartStatus('Preparando sua entrada...');connect()};window.addEventListener('online',()=>{if(playRequested){setNetStatus('RECONECTANDO...',true);connect()}});window.addEventListener('offline',()=>setNetStatus('SEM INTERNET',true));document.addEventListener('visibilitychange',()=>{if(document.hidden)pauseLocalControls();else if(playRequested&&(!ws||ws.readyState!==WebSocket.OPEN))connect()});window.addEventListener('pagehide',pauseLocalControls);window.addEventListener('blur',pauseLocalControls);
@@ -740,9 +740,11 @@ function hydrateStartBattle() {
 }
 hydrateStartBattle();
 
+let lastAimWeaponIconKey = null;
 function setAimWeaponIcon(key) {
+  if (key === lastAimWeaponIconKey) return;
   const el = document.getElementById('aimWeaponIcon');
-  if (el) el.innerHTML = weaponIconSvg(key);
+  if (el) { el.innerHTML = weaponIconSvg(key); lastAimWeaponIconKey = key; }
 }
 
 // ---- Barra de armas ----
@@ -764,8 +766,13 @@ function buildWeaponBar() {
   }
   refreshWeaponBar();
 }
-function refreshWeaponBar() {
+let lastWeaponBarSig = '';
+function refreshWeaponBar(force=false) {
   if (!myData) return;
+  const owned = Object.keys(myData.owned || {}).filter(k => myData.owned[k]).sort().join(',');
+  const sig = `${currentWeapon}|${owned}`;
+  if (!force && sig === lastWeaponBarSig) return;
+  lastWeaponBarSig = sig;
   document.querySelectorAll('#weapons .wbtn').forEach(btn => {
     const k = btn.dataset.w;
     btn.classList.toggle('active', k === currentWeapon && myData.owned[k]);
@@ -816,8 +823,16 @@ function buildShop() {
   }
   refreshShop();
 }
-function refreshShop() {
+let lastShopSig = '';
+function refreshShop(force=false) {
   if (!myData) return;
+  const shopPanel = document.getElementById('shop');
+  if (!force && (!shopPanel || shopPanel.style.display !== 'flex')) return;
+  const owned = Object.keys(myData.owned || {}).filter(k => myData.owned[k]).sort().join(',');
+  const skinsOwned = Object.keys(myData.ownedSkins || {}).filter(k => myData.ownedSkins[k]).sort().join(',');
+  const sig = `${myData.points}|${myData.armor||0}|${myData.bombs||0}|${myData.skin||''}|${currentWeapon}|${owned}|${skinsOwned}`;
+  if (!force && sig === lastShopSig) return;
+  lastShopSig = sig;
   document.getElementById('shopPts').textContent = `Pontos: ${myData.points} • 🛡️ ${myData.armor || 0} • 🍾 ${myData.bombs || 0}`;
   document.querySelectorAll('#shopItems .shopItem').forEach(row => {
     const kind = row.dataset.kind, key = row.dataset.key, btn = row.querySelector('button');
@@ -857,7 +872,7 @@ function refreshShop() {
   });
   updateBombButton();
 }
-function openShop(){document.getElementById('shop').style.display='flex';const sc=document.getElementById('shopScroll');if(sc)sc.scrollTop=0;refreshShop()}
+function openShop(){document.getElementById('shop').style.display='flex';const sc=document.getElementById('shopScroll');if(sc)sc.scrollTop=0;lastShopSig='';refreshShop(true)}
 function closeShop() { document.getElementById('shop').style.display = 'none'; }
 document.getElementById('shopBtn').onclick = openShop;
 document.getElementById('shopClose').onclick=closeShop;const shopCloseTop=document.getElementById('shopCloseTop');if(shopCloseTop)shopCloseTop.onclick=closeShop;
@@ -873,13 +888,17 @@ function updateBombButton() {
 function useBomb() {
   if (!canControlPlayer()) return;
   if (!myData || (myData.bombs || 0) <= 0) { flashMsg('🍾 Compre uma Pinga do Lelê na loja.'); openShop(); return; }
-  send({ type: 'useBomb' });
+  send({ type: 'useBomb', angle: myAngle });
 }
 document.getElementById('bombBtn').onclick = useBomb;
 
 // ---- Votação ----
-let myVote = null;
+let myVote = null, lastVoteUiSig = '';
 function updateVoteUI() {
+  const votePlayersSig = state.players.map(p => `${p.id}:${p.kills}:${p.spectating?1:0}:${p.name}`).join(';');
+  const voteSig = `${state.phase}|${state.timeLeft}|${myVote}|${JSON.stringify(state.votes||{})}|${state.ejected?state.ejected.id||state.ejected.name||'x':''}|${votePlayersSig}`;
+  if (voteSig === lastVoteUiSig) return;
+  lastVoteUiSig = voteSig;
   const panel = document.getElementById('vote');
   const meVote = state.players.find(p => p.id === myId);
   const canVote = !!meVote && !meVote.spectating;
@@ -953,14 +972,19 @@ function cycleSpectateTarget() {
   spectateTargetId = targets[(idx + 1 + targets.length) % targets.length].id;
   updateSpectatorUI();
 }
+let lastSpectatorUiSig = '';
 function updateSpectatorUI() {
   const me = state.players.find(p => p.id === myId);
   const active = !!me && !!me.spectating && state.phase === 'playing';
+  const targetPreview = active ? ensureSpectateTarget() : null;
+  const sig = `${active?1:0}|${targetPreview?targetPreview.id:''}|${targetPreview?targetPreview.kills:''}`;
+  if (sig === lastSpectatorUiSig) return;
+  lastSpectatorUiSig = sig;
   document.body.classList.toggle('spectating', active);
   const box = document.getElementById('spectator');
   box.style.display = active ? 'block' : 'none';
   if (!active) return;
-  const t = ensureSpectateTarget();
+  const t = targetPreview || ensureSpectateTarget();
   document.getElementById('spectatorTarget').textContent = t ? `${t.name} • ${t.kills} kills` : 'ninguém vivo no momento';
 }
 document.getElementById('spectateNext').onclick = cycleSpectateTarget;
@@ -992,70 +1016,32 @@ function canControlPlayer() {
   return !!myData && myData.alive && !myData.spectating && state.phase === 'playing';
 }
 
-// ---- Joysticks MOBILE: centro e alcance calculados pelo tamanho real renderizado ----
-// A versão anterior usava os centros desktop (65/75px) mesmo quando o CSS reduzia os sticks no celular.
+// ---- Joysticks MOBILE: Pointer Events + pointer capture para não "prender" ----
 const stick = document.getElementById('stick'), knob = document.getElementById('stickKnob');
 const aimStick = document.getElementById('aimStick'), aimKnob = document.getElementById('aimKnob');
-let stickId = null, aimId = null, aiming = false, fireInterval = null;
-
-function joystickVector(base, handle, clientX, clientY) {
-  const rect = base.getBoundingClientRect();
-  const hw = handle.offsetWidth || 50, hh = handle.offsetHeight || 50;
-  const centerX = rect.width / 2, centerY = rect.height / 2;
-  let dx = clientX - rect.left - centerX, dy = clientY - rect.top - centerY;
-  const d = Math.hypot(dx,dy);
-  const maxDist = Math.max(20, Math.min(rect.width,rect.height)/2 - Math.max(hw,hh)/2 + 2);
-  if (d > maxDist) { dx = dx / d * maxDist; dy = dy / d * maxDist; }
-  handle.style.left = (centerX - hw/2 + dx) + 'px';
-  handle.style.top = (centerY - hh/2 + dy) + 'px';
-  return { dx, dy, d, maxDist };
-}
-function centerJoystick(base, handle) {
-  const rect = base.getBoundingClientRect();
-  const hw = handle.offsetWidth || 50, hh = handle.offsetHeight || 50;
-  handle.style.left = (rect.width/2 - hw/2) + 'px';
-  handle.style.top = (rect.height/2 - hh/2) + 'px';
-}
-
-stick.addEventListener('touchstart', (e) => {
-  if (!canControlPlayer()) return;
-  stickId = e.changedTouches[0].identifier;
-  const t=e.changedTouches[0]; joystickVector(stick,knob,t.clientX,t.clientY);
-  e.preventDefault();
-}, { passive:false });
-stick.addEventListener('touchmove', (e) => {
-  for (const t of e.changedTouches) {
-    if (t.identifier !== stickId) continue;
-    const v = joystickVector(stick,knob,t.clientX,t.clientY);
-    const dead = Math.max(8, v.maxDist*.24);
-    input.left = v.dx < -dead; input.right = v.dx > dead; input.up = v.dy < -dead; input.down = v.dy > dead;
-    if (v.d > dead && !aiming) myAngle = Math.atan2(v.dy, v.dx);
-  }
-  e.preventDefault();
-}, { passive:false });
-function stickEnd() { stickId = null; centerJoystick(stick,knob); input.up = input.down = input.left = input.right = false; }
-stick.addEventListener('touchend', stickEnd, { passive:false }); stick.addEventListener('touchcancel', stickEnd, { passive:false });
-
-function startAutoFire() { if (!canControlPlayer() || fireInterval) return; send({ type: 'attack' }); fireInterval = setInterval(() => { if (canControlPlayer()) send({ type: 'attack' }); else stopAutoFire(); }, 110); }
-function stopAutoFire() { clearInterval(fireInterval); fireInterval = null; }
-aimStick.addEventListener('touchstart', (e) => {
-  if (!canControlPlayer()) return;
-  aimId = e.changedTouches[0].identifier; aiming = true;
-  const t=e.changedTouches[0]; const v=joystickVector(aimStick,aimKnob,t.clientX,t.clientY);
-  if (v.d > Math.max(8,v.maxDist*.22)) { myAngle=Math.atan2(v.dy,v.dx); startAutoFire(); }
-  e.preventDefault();
-}, { passive:false });
-aimStick.addEventListener('touchmove', (e) => {
-  for (const t of e.changedTouches) {
-    if (t.identifier !== aimId) continue;
-    const v = joystickVector(aimStick,aimKnob,t.clientX,t.clientY);
-    if (v.d > Math.max(8,v.maxDist*.22)) { myAngle = Math.atan2(v.dy, v.dx); startAutoFire(); }
-  }
-  e.preventDefault();
-}, { passive:false });
-function aimEnd() { aimId = null; aiming = false; centerJoystick(aimStick,aimKnob); stopAutoFire(); }
-aimStick.addEventListener('touchend', aimEnd, { passive:false }); aimStick.addEventListener('touchcancel', aimEnd, { passive:false });
-window.addEventListener('resize', () => { if (!stickId) centerJoystick(stick,knob); if (!aimId) centerJoystick(aimStick,aimKnob); });
+let stickId = null, aimId = null, aiming = false, fireTimer = null;
+const joyGeom = new WeakMap();
+let lastInputSentAt = 0, lastInputSig = '';
+function updateJoystickGeometry(base, handle) { const rect=base.getBoundingClientRect(),hw=handle.offsetWidth||50,hh=handle.offsetHeight||50;const g={left:rect.left,top:rect.top,centerX:rect.width/2,centerY:rect.height/2,hw,hh,maxDist:Math.max(20,Math.min(rect.width,rect.height)/2-Math.max(hw,hh)/2+2)};joyGeom.set(base,g);handle.style.left=(g.centerX-hw/2)+'px';handle.style.top=(g.centerY-hh/2)+'px';handle.style.transform='translate3d(0,0,0)';return g; }
+function joystickVector(base,handle,clientX,clientY){const g=joyGeom.get(base)||updateJoystickGeometry(base,handle);let dx=clientX-g.left-g.centerX,dy=clientY-g.top-g.centerY;const rawDist=Math.hypot(dx,dy);if(rawDist>g.maxDist&&rawDist>0){dx=dx/rawDist*g.maxDist;dy=dy/rawDist*g.maxDist}handle.style.transform=`translate3d(${dx.toFixed(1)}px,${dy.toFixed(1)}px,0)`;return{dx,dy,d:Math.hypot(dx,dy),maxDist:g.maxDist}}
+function centerJoystick(base,handle){if(!joyGeom.get(base))updateJoystickGeometry(base,handle);handle.style.transform='translate3d(0,0,0)'}
+function inputSignature(){return `${+input.up}${+input.down}${+input.left}${+input.right}|${Math.round(myAngle*100)}`}
+function sendInputSnapshot(force=false){if(myId===null)return;const now=performance.now(),sig=inputSignature();if(!force&&sig===lastInputSig&&now-lastInputSentAt<45)return;if(!force&&now-lastInputSentAt<24)return;lastInputSig=sig;lastInputSentAt=now;send({type:'input',input,angle:myAngle})}
+function setMoveFromVector(v){const dead=Math.max(7,v.maxDist*.21),before=`${+input.up}${+input.down}${+input.left}${+input.right}`;input.left=v.dx< -dead;input.right=v.dx>dead;input.up=v.dy< -dead;input.down=v.dy>dead;if(v.d>dead&&!aiming)myAngle=Math.atan2(v.dy,v.dx);const after=`${+input.up}${+input.down}${+input.left}${+input.right}`;sendInputSnapshot(before!==after)}
+function currentAutoFireDelay(){const w=weapons[currentWeapon];return Math.max(80,Math.min(950,((w&&w.cooldown)||300)+8))}
+function fireTick(){if(!canControlPlayer()||!aiming){stopAutoFire();return}send({type:'attack',angle:myAngle});fireTimer=setTimeout(fireTick,currentAutoFireDelay())}
+function startAutoFire(){if(!canControlPlayer()||fireTimer)return;fireTick()}
+function stopAutoFire(){if(fireTimer)clearTimeout(fireTimer);fireTimer=null}
+function setAimFromVector(v){const dead=Math.max(7,v.maxDist*.20);if(v.d>dead){myAngle=Math.atan2(v.dy,v.dx);sendInputSnapshot(false);startAutoFire()}else stopAutoFire()}
+function endStick(pointerId,force=false){if(!force&&stickId!==pointerId)return;stickId=null;centerJoystick(stick,knob);input.up=input.down=input.left=input.right=false;sendInputSnapshot(true)}
+function endAim(pointerId,force=false){if(!force&&aimId!==pointerId)return;aimId=null;aiming=false;centerJoystick(aimStick,aimKnob);stopAutoFire();sendInputSnapshot(true)}
+function resetMobileControls(force=false){const sid=stickId,aid=aimId;try{if(sid!==null&&stick.hasPointerCapture&&stick.hasPointerCapture(sid))stick.releasePointerCapture(sid)}catch{}try{if(aid!==null&&aimStick.hasPointerCapture&&aimStick.hasPointerCapture(aid))aimStick.releasePointerCapture(aid)}catch{}endStick(sid,true);endAim(aid,true);if(force){input.up=input.down=input.left=input.right=false;stopAutoFire()}}
+function onStickDown(e){if(!canControlPlayer()||stickId!==null)return;stickId=e.pointerId;updateJoystickGeometry(stick,knob);try{stick.setPointerCapture(e.pointerId)}catch{}setMoveFromVector(joystickVector(stick,knob,e.clientX,e.clientY));e.preventDefault()}
+function onStickMove(e){if(e.pointerId!==stickId)return;setMoveFromVector(joystickVector(stick,knob,e.clientX,e.clientY));e.preventDefault()}
+function onAimDown(e){if(!canControlPlayer()||aimId!==null)return;aimId=e.pointerId;aiming=true;updateJoystickGeometry(aimStick,aimKnob);try{aimStick.setPointerCapture(e.pointerId)}catch{}setAimFromVector(joystickVector(aimStick,aimKnob,e.clientX,e.clientY));e.preventDefault()}
+function onAimMove(e){if(e.pointerId!==aimId)return;setAimFromVector(joystickVector(aimStick,aimKnob,e.clientX,e.clientY));e.preventDefault()}
+if(window.PointerEvent){stick.addEventListener('pointerdown',onStickDown,{passive:false});stick.addEventListener('pointermove',onStickMove,{passive:false});stick.addEventListener('pointerup',e=>endStick(e.pointerId),{passive:false});stick.addEventListener('pointercancel',e=>endStick(e.pointerId),{passive:false});stick.addEventListener('lostpointercapture',e=>endStick(e.pointerId));aimStick.addEventListener('pointerdown',onAimDown,{passive:false});aimStick.addEventListener('pointermove',onAimMove,{passive:false});aimStick.addEventListener('pointerup',e=>endAim(e.pointerId),{passive:false});aimStick.addEventListener('pointercancel',e=>endAim(e.pointerId),{passive:false});aimStick.addEventListener('lostpointercapture',e=>endAim(e.pointerId))}else{stick.addEventListener('touchstart',e=>{const t=e.changedTouches[0];onStickDown({pointerId:t.identifier,clientX:t.clientX,clientY:t.clientY,preventDefault:()=>e.preventDefault()})},{passive:false});stick.addEventListener('touchmove',e=>{for(const t of e.changedTouches)if(t.identifier===stickId)onStickMove({pointerId:t.identifier,clientX:t.clientX,clientY:t.clientY,preventDefault:()=>e.preventDefault()})},{passive:false});stick.addEventListener('touchend',e=>{for(const t of e.changedTouches)endStick(t.identifier)},{passive:false});stick.addEventListener('touchcancel',e=>{for(const t of e.changedTouches)endStick(t.identifier)},{passive:false});aimStick.addEventListener('touchstart',e=>{const t=e.changedTouches[0];onAimDown({pointerId:t.identifier,clientX:t.clientX,clientY:t.clientY,preventDefault:()=>e.preventDefault()})},{passive:false});aimStick.addEventListener('touchmove',e=>{for(const t of e.changedTouches)if(t.identifier===aimId)onAimMove({pointerId:t.identifier,clientX:t.clientX,clientY:t.clientY,preventDefault:()=>e.preventDefault()})},{passive:false});aimStick.addEventListener('touchend',e=>{for(const t of e.changedTouches)endAim(t.identifier)},{passive:false});aimStick.addEventListener('touchcancel',e=>{for(const t of e.changedTouches)endAim(t.identifier)},{passive:false})}
+window.addEventListener('resize',()=>{joyGeom.delete(stick);joyGeom.delete(aimStick);if(stickId===null)updateJoystickGeometry(stick,knob);if(aimId===null)updateJoystickGeometry(aimStick,aimKnob)});
 
 // ---- Desktop ----
 window.addEventListener('keydown', (e) => {
@@ -1076,13 +1062,13 @@ window.addEventListener('keyup', (e) => {
   if (e.key === 'd' || e.key === 'ArrowRight') input.right = false;
 });
 window.addEventListener('mousemove', (e) => { if (!aiming && canControlPlayer()) myAngle = Math.atan2(e.clientY - H / 2, e.clientX - W / 2); });
-window.addEventListener('mousedown', (e) => { if (e.target.closest('#vote,#shop,#topRight,#chatInputWrap,#start,#spectator')) return; startAutoFire(); });
-window.addEventListener('mouseup', () => stopAutoFire());
+window.addEventListener('mousedown', (e) => { if (e.target.closest('#vote,#shop,#topRight,#chatInputWrap,#start,#spectator')) return; aiming = true; startAutoFire(); });
+window.addEventListener('mouseup', () => { aiming = false; stopAutoFire(); });
 
-setInterval(() => { if (myId !== null) send({ type: 'input', input, angle: myAngle }); }, 50);
+setInterval(() => sendInputSnapshot(false), 1000 / 30);
 
 // ---- Personagem bean ----
-let animTime = 0;
+let animTime = 0, lastFrameTs = performance.now();
 const prevPos = {};
 
 function drawFlipFlopSprite(x, y, scale, rot) {
@@ -1356,19 +1342,24 @@ function drawRoomDecor(rm, camX, camY) {
   ctx.restore();
 }
 
+let lastHudPaintAt=0,lastScoreHtml='',lastStatusHtml='';
+function updateHudDom(me,nowTs=performance.now()){if(nowTs-lastHudPaintAt<90)return;lastHudPaintAt=nowTs;const mobileHud=W<=820||COARSE_POINTER,sorted=[...state.players].sort((a,b)=>b.kills-a.kills).slice(0,mobileHud?3:5);const scoreHtml=sorted.length?`<span class="hudTitle">TOP ${mobileHud?3:5}</span>`+sorted.map((p,i)=>`<div class="scoreLine${p.id===myId?' me':''}"><span class="rank">${i+1}</span><span class="name">${p.id===myId?'▶ ':''}${escapeHtml(p.name)}${p.spectating?' 👁':''}</span><span>${p.kills}💀</span></div>`).join(''):'Placar';if(scoreHtml!==lastScoreHtml){document.getElementById('scoreboard').innerHTML=scoreHtml;lastScoreHtml=scoreHtml}let timerStr='';if(state.timeLeft!=null&&state.phase==='playing'){const mm=Math.floor(state.timeLeft/60),ss=state.timeLeft%60;timerStr=`${mm}:${ss.toString().padStart(2,'0')}`}let statusHtml='Conectando...';if(me){const weaponName=(weapons[me.weapon]&&weapons[me.weapon].name)||'Arma';statusHtml=me.spectating?`<span class="hudTitle">EXPECTADOR</span><div class="hudPills"><span class="hudPill">👁 Fora da rodada</span><span class="hudPill money">💰 ${me.points}</span><span class="hudPill">☠️ ${me.kills}</span></div>`:`<div class="hudPills"><span class="hudPill hp">❤️ ${Math.max(0,me.hp)}/${me.maxHp||100}</span>${me.armor>0?`<span class="hudPill">🛡️ ${me.armor}</span>`:''}<span class="hudPill money">💰 ${me.points}</span><span class="hudPill">🍾 ${me.bombs||0}</span><span class="hudPill weapon">🔫 ${escapeHtml(weaponName)}</span><span class="hudPill">R${state.round||1}${timerStr?' • ⏱ '+timerStr:''}</span></div>`}if(statusHtml!==lastStatusHtml){document.getElementById('status').innerHTML=statusHtml;lastStatusHtml=statusHtml}}
+
 function getGameZoom() {
   const mobile = W <= 820 || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
   if (!mobile) return 0.72;
   return H >= W ? 0.82 : 0.74; // portrait é o alvo principal; player/mapa ficam mais legíveis
 }
-function draw() {
-  animTime += 1 / 60;
+function draw(frameTs = performance.now()) {
+  const dt = Math.max(0.001, Math.min(0.05, (frameTs - lastFrameTs) / 1000));
+  lastFrameTs = frameTs; animTime += dt;
   const ZOOM = getGameZoom();
+  const interpAlpha = 1 - Math.exp(-16 * dt);
 
-  // ---- interpola posições (movimento fluido entre updates do servidor) ----
+  // ---- interpola posições com constante de tempo estável em 30/60/90/120 Hz ----
   for (const id in render) {
     const r = render[id];
-    if (r.tx !== undefined) { r.x += (r.tx - r.x) * 0.25; r.y += (r.ty - r.y) * 0.25; }
+    if (r.tx !== undefined) { r.x += (r.tx - r.x) * interpAlpha; r.y += (r.ty - r.y) * interpAlpha; }
   }
   // câmera: jogador normal segue a si mesmo; espectador acompanha um jogador ativo
   const meRaw = state.players.find(p => p.id === myId);
@@ -1401,6 +1392,7 @@ function draw() {
 
   // ---- cômodos: piso específico + decoração flat que não interfere na colisão ----
   if (gameMap.rooms) for (const rm of gameMap.rooms) {
+    if (rm.x + rm.w < camX - 60 || rm.y + rm.h < camY - 60 || rm.x > camX + viewW + 60 || rm.y > camY + viewH + 60) continue;
     drawRoomFloor(rm,camX,camY);
     drawRoomDecor(rm,camX,camY);
     const labelX = rm.x + rm.w / 2 - camX, labelY = rm.y + 35 - camY;
@@ -1431,7 +1423,7 @@ function draw() {
     }
     if (d.life <= 0) decals.splice(i, 1);
   }
-  if (decals.length > 40) decals.splice(0, decals.length - 40);
+  const decalCap = COARSE_POINTER ? 28 : 40; if (decals.length > decalCap) decals.splice(0, decals.length - decalCap);
 
   // ---- LINHA DE MIRA GUIA: respeita o alcance real da arma ----
   if (me && me.alive && !me.spectating) {
@@ -1595,8 +1587,9 @@ function draw() {
     g.addColorStop(1, 'rgba(255,180,40,0)');
     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(ax, ay, pulse + 20, 0, Math.PI * 2); ctx.fill();
     // labaredas subindo
-    for (let f = 0; f < 8; f++) {
-      const fa = (f / 8) * Math.PI * 2 + animTime * 3;
+    const auraFlames = COARSE_POINTER ? 5 : 8;
+    for (let f = 0; f < auraFlames; f++) {
+      const fa = (f / auraFlames) * Math.PI * 2 + animTime * 3;
       const fr = pulse + Math.sin(animTime * 25 + f) * 8;
       const fx = ax + Math.cos(fa) * fr, fy = ay + Math.sin(fa) * fr - 6;
       ctx.fillStyle = `rgba(255,${200 + Math.floor(Math.random()*55)},60,${0.6 * au.life})`;
@@ -1629,11 +1622,11 @@ function draw() {
     ctx.beginPath(); ctx.arc(pt.x - camX, pt.y - camY, pt.r * Math.max(.25,pt.life), 0, Math.PI * 2); ctx.fill();
   }
 
-  if(particles.length>260)particles.splice(0,particles.length-260);
+  const particleCap = COARSE_POINTER ? 150 : 260; if(particles.length>particleCap)particles.splice(0,particles.length-particleCap);
   // reset da transform para o HUD (já é DOM, mas garante estado limpo)
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 
-  const mobileHud=W<=820||(window.matchMedia&&window.matchMedia('(pointer: coarse)').matches),sorted=[...state.players].sort((a,b)=>b.kills-a.kills).slice(0,mobileHud?3:5);document.getElementById('scoreboard').innerHTML=sorted.length?`<span class="hudTitle">TOP ${mobileHud?3:5}</span>`+sorted.map((p,i)=>`<div class="scoreLine${p.id===myId?' me':''}"><span class="rank">${i+1}</span><span class="name">${p.id===myId?'▶ ':''}${escapeHtml(p.name)}${p.spectating?' 👁':''}</span><span>${p.kills}💀</span></div>`).join(''):'Placar';let timerStr='';if(state.timeLeft!=null&&state.phase==='playing'){const mm=Math.floor(state.timeLeft/60),ss=state.timeLeft%60;timerStr=`${mm}:${ss.toString().padStart(2,'0')}`}if(me){const weaponName=(weapons[me.weapon]&&weapons[me.weapon].name)||'Arma';document.getElementById('status').innerHTML=me.spectating?`<span class="hudTitle">EXPECTADOR</span><div class="hudPills"><span class="hudPill">👁 Fora da rodada</span><span class="hudPill money">💰 ${me.points}</span><span class="hudPill">☠️ ${me.kills}</span></div>`:`<div class="hudPills"><span class="hudPill hp">❤️ ${Math.max(0,me.hp)}/${me.maxHp||100}</span>${me.armor>0?`<span class="hudPill">🛡️ ${me.armor}</span>`:''}<span class="hudPill money">💰 ${me.points}</span><span class="hudPill">🍾 ${me.bombs||0}</span><span class="hudPill weapon">🔫 ${escapeHtml(weaponName)}</span><span class="hudPill">R${state.round||1}${timerStr?' • ⏱ '+timerStr:''}</span></div>`}else document.getElementById('status').textContent='Conectando...';
+  updateHudDom(me, frameTs);
 
   // respawn normal. Ejetado usa o modo espectador, nunca a tela de morte.
   document.getElementById('dead').style.display = (me && !me.alive && state.phase === 'playing' && !me.spectating) ? 'flex' : 'none';

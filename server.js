@@ -6,7 +6,7 @@ const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 
 const PORT = process.env.PORT || 3000;
-const BUILD = 'v4-mobile-beta-2.0';
+const BUILD = 'v4-mobile-beta-2.1-fluid-controls';
 
 const server = http.createServer((req, res) => {
   let pathname = '/';
@@ -411,10 +411,16 @@ wss.on('connection', (ws, req) => {
         switchSkin(pl, msg.skin);
         break;
       case 'useBomb':
-        if (pl.alive && !isSpectating(pl) && phase === 'playing') throwBomb(pl, ws);
+        if (pl.alive && !isSpectating(pl) && phase === 'playing') {
+          if (Number.isFinite(msg.angle)) pl.angle = Math.atan2(Math.sin(msg.angle), Math.cos(msg.angle));
+          throwBomb(pl, ws);
+        }
         break;
       case 'attack':
-        if (pl.alive && !isSpectating(pl) && phase === 'playing') tryAttack(pl);
+        if (pl.alive && !isSpectating(pl) && phase === 'playing') {
+          if (Number.isFinite(msg.angle)) pl.angle = Math.atan2(Math.sin(msg.angle), Math.cos(msg.angle));
+          tryAttack(pl);
+        }
         break;
       case 'vote':
         handleVote(pl, msg.target);
