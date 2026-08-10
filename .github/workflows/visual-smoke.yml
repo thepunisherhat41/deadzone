@@ -1,3 +1,4 @@
+# Final smoke for the restored graphics build
 name: Visual smoke
 on:
   push:
@@ -54,6 +55,7 @@ jobs:
               canvas:{w:document.getElementById('game').width,h:document.getElementById('game').height},
               weaponQuick:getComputedStyle(document.getElementById('weaponQuick')).display,
               scoreboard:document.getElementById('scoreboard').textContent,
+              aimGuide:document.body.textContent.includes('DEADZONE') || !!document.getElementById('aimStick'),
               bodyBg:getComputedStyle(document.body).backgroundColor
             }));
             if(data.visual!=='graphics-overhaul-v1')throw new Error(`${name}: visual marker missing`);
