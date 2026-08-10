@@ -1,0 +1,65 @@
+name: Graphics overhaul rollout
+on:
+  push:
+    branches:
+      - feature-graphics-overhaul-v1
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature-graphics-overhaul-v1
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply graphics overhaul
+        run: python3 .github/scripts/graphics_overhaul_patch.py
+      - name: Validate server syntax
+        run: node --check server.js
+      - name: Validate client syntax and visual markers
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, subprocess
+          h=Path('public/index.html').read_text()
+          m=re.search(r'<script>(.*)</script>',h,re.S)
+          assert m, 'client script not found'
+          Path('/tmp/deadzone-client.js').write_text(m.group(1))
+          subprocess.run(['node','--check','/tmp/deadzone-client.js'],check=True)
+          checks=[
+            "window.DEADZONE_VISUAL_BUILD='graphics-overhaul-v1'",
+            'function paintStaticScene()',
+            'function paintRoomFloorV2(',
+            'function paintDecorV2(',
+            'function paintWallV2(',
+            'function drawActorBase(',
+            'function drawProjectileAura(',
+            'function drawScreenGrade(',
+            'ensureSceneCache();',
+            'ctx.drawImage(sceneCacheCanvas,-camX,-camY);',
+            'invalidateSceneCache();',
+            "imageSmoothingQuality = 'high'"
+          ]
+          for c in checks:
+            assert c in h, c
+          assert "const BUILD = 'v4-mobile-beta-2.4-visual-overhaul';" in Path('server.js').read_text()
+          # Old expensive static loops must no longer live in draw().
+          draw=h[h.index('function draw(frameTs'):h.index('// checagem de parede no cliente')]
+          assert 'drawRoomFloor(rm,camX,camY);' not in draw
+          assert "ctx.strokeRect(-camX, -camY, world.w, world.h)" not in draw
+          print('graphics overhaul structural checks PASS')
+          PY
+      - name: Commit validated graphics build
+        shell: bash
+        run: |
+          rm -f .github/workflows/graphics-overhaul-rollout.yml .github/scripts/graphics_overhaul_patch.py
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/index.html server.js .github/workflows/graphics-overhaul-rollout.yml .github/scripts/graphics_overhaul_patch.py
+          git commit -m 'Overhaul procedural graphics and scene rendering [skip ci]'
+          git push origin HEAD:feature-graphics-overhaul-v1
