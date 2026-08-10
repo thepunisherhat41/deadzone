@@ -35,7 +35,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p visual-artifacts
-          cat > /tmp/visual-smoke.mjs <<'JS'
+          cat > visual-smoke.mjs <<'JS'
           import { chromium } from 'playwright';
           const browser = await chromium.launch({headless:true});
           const errors=[];
@@ -68,7 +68,8 @@ jobs:
           await browser.close();
           if(errors.length){console.error(errors.join('\n'));process.exit(1)}
           JS
-          node /tmp/visual-smoke.mjs
+          node visual-smoke.mjs
+          rm -f visual-smoke.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
