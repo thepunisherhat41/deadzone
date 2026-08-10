@@ -7,7 +7,7 @@ const { WebSocketServer } = require('ws');
 const { WeeklyRanking } = require('./ranking');
 
 const PORT = process.env.PORT || 3000;
-const BUILD = 'v4-mobile-beta-2.3-weekly-ranking';
+const BUILD = 'v4-mobile-beta-2.4-visual-overhaul';
 
 const server = http.createServer((req, res) => {
   let pathname = '/';
