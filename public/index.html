@@ -1635,6 +1635,44 @@ function draw(frameTs = performance.now()) {
   ensureSceneCache();
   if(sceneCacheCanvas)ctx.drawImage(sceneCacheCanvas,-camX,-camY);
   drawAmbientSceneLighting(camX,camY,viewW,viewH,meX,meY);
+  // poças de sangue e marcas queimadas da Pinga do Lelê
+  for (let i = decals.length - 1; i >= 0; i--) {
+    const d = decals[i]; if (d.r < d.maxR) d.r += 1;
+    if (d.burn) {
+      ctx.fillStyle = 'rgba(24,18,14,.62)'; ctx.beginPath(); ctx.arc(d.x-camX,d.y-camY,d.r,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,126,45,.22)'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(d.x-camX,d.y-camY,d.r*.72,0,Math.PI*2); ctx.stroke();
+      d.life -= .0025;
+    } else {
+      ctx.fillStyle = 'rgba(140,10,20,.75)'; ctx.beginPath(); ctx.arc(d.x - camX, d.y - camY, d.r, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(180,20,30,.6)'; ctx.beginPath(); ctx.arc(d.x - camX - d.r * 0.3, d.y - camY, d.r * 0.5, 0, Math.PI * 2); ctx.fill();
+      d.life -= 0.0015;
+    }
+    if (d.life <= 0) decals.splice(i, 1);
+  }
+  const decalCap = COARSE_POINTER ? 28 : 40; if (decals.length > decalCap) decals.splice(0, decals.length - decalCap);
+
+  // ---- LINHA DE MIRA GUIA: respeita o alcance real da arma ----
+  if (me && me.alive && !me.spectating) {
+    const wGuide = weapons[currentWeapon] || { range: 520, tint: '#ffd23b' };
+    const maxRange = Math.max(80, wGuide.range || 520);
+    let gx = meX, gy = meY, travelled = 0;
+    const stepLen = 10;
+    const stepX = Math.cos(myAngle) * stepLen, stepY = Math.sin(myAngle) * stepLen;
+    while (travelled < maxRange) {
+      gx += stepX; gy += stepY; travelled += stepLen;
+      if (gx < 0 || gy < 0 || gx > world.w || gy > world.h) break;
+      if (!wGuide.wave && wallAt(gx, gy)) break; // Grito do Vado atravessa a parede também na mira
+    }
+    ctx.strokeStyle = wGuide.wave ? 'rgba(127,224,255,.54)' : 'rgba(255,210,59,.52)';
+    ctx.lineWidth = wGuide.wave ? 2.5 : 2; ctx.setLineDash(wGuide.wave ? [5,7] : [10,8]);
+    ctx.beginPath(); ctx.moveTo(meX - camX, meY - camY); ctx.lineTo(gx - camX, gy - camY); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.strokeStyle = wGuide.wave ? 'rgba(127,224,255,.9)' : 'rgba(255,210,59,.85)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(gx - camX, gy - camY, 6, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(gx - camX - 9, gy - camY); ctx.lineTo(gx - camX + 9, gy - camY);
+    ctx.moveTo(gx - camX, gy - camY - 9); ctx.lineTo(gx - camX, gy - camY + 9); ctx.stroke();
+  }
+
 
   // muzzle / feedback visual por arma
   for (let i = muzzles.length - 1; i >= 0; i--) {
