@@ -1,0 +1,47 @@
+name: Restore dynamic visuals
+on:
+  push:
+    branches:
+      - feature-graphics-overhaul-v1
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature-graphics-overhaul-v1
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Fetch stable main
+        run: git fetch origin main --depth=1
+      - name: Restore dynamic decals and aim guide
+        run: python3 .github/scripts/restore_dynamic_visuals.py
+      - name: Validate client syntax
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,subprocess
+          h=Path('public/index.html').read_text()
+          m=re.search(r'<script>(.*)</script>',h,re.S);assert m
+          Path('/tmp/client.js').write_text(m.group(1))
+          subprocess.run(['node','--check','/tmp/client.js'],check=True)
+          draw=h[h.index('function draw(frameTs'):h.index('// checagem de parede no cliente')]
+          assert '// poças de sangue e marcas queimadas da Pinga do Lelê' in draw
+          assert '// ---- LINHA DE MIRA GUIA: respeita o alcance real da arma ----' in draw
+          assert '// ---- paredes: mais volumosas e legíveis no mobile ----' not in draw
+          print('dynamic visuals restore PASS')
+          PY
+      - name: Commit restored dynamic visuals
+        shell: bash
+        run: |
+          rm -f .github/workflows/restore-dynamic-visuals.yml .github/scripts/restore_dynamic_visuals.py
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/index.html .github/workflows/restore-dynamic-visuals.yml .github/scripts/restore_dynamic_visuals.py
+          git commit -m 'Restore aim guide and dynamic decals in graphics overhaul [skip ci]'
+          git push origin HEAD:feature-graphics-overhaul-v1
