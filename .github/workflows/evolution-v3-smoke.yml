@@ -1,0 +1,96 @@
+name: Evolution V3 Browser Smoke
+on:
+  push:
+    branches:
+      - feature/deadzone-evolution-v3
+permissions:
+  contents: write
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/deadzone-evolution-v3
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install and start
+        shell: bash
+        run: |
+          npm ci --no-audit --no-fund
+          npm install --no-save --package-lock=false --no-audit --no-fund playwright
+          npx playwright install --with-deps chromium
+          PORT=3000 npm start >/tmp/deadzone.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3000/health >/tmp/health.json; then cat /tmp/health.json; break; fi
+            sleep 1
+          done
+          grep -q 'v5-evolution-3.0-preview' /tmp/health.json
+      - name: Run gameplay smoke and capture report
+        id: test
+        shell: bash
+        run: |
+          set +e
+          mkdir -p visual-artifacts
+          cat > smoke.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const results=[];
+          async function arena(name,viewport,isMobile){
+            const context=await browser.newContext({viewport,isMobile,hasTouch:isMobile,deviceScaleFactor:isMobile?2:1});
+            const page=await context.newPage(); const errors=[];
+            page.on('pageerror',e=>errors.push('page:'+e.message)); page.on('console',m=>{if(m.type()==='error')errors.push('console:'+m.text())});
+            await page.goto('http://127.0.0.1:3000',{waitUntil:'domcontentloaded'});
+            await page.waitForFunction(()=>window.DEADZONE_EVOLUTION_BUILD==='evolution-v3.0',{timeout:12000});
+            await page.locator('#start input').fill(name); await page.locator('#playBtn').click();
+            await page.waitForFunction(()=>getComputedStyle(document.getElementById('start')).display==='none',{timeout:12000});
+            await page.waitForTimeout(2200);
+            let snap=await page.evaluate(()=>({bridge:!!window.DEADZONE_BRIDGE,evo:window.DEADZONE_EVOLUTION_BUILD,players:window.DEADZONE_BRIDGE?.getState?.()?.players?.length||0,room:window.DEADZONE_BRIDGE?.getState?.()?.room,canvas:[game.width,game.height],pixi:!!document.getElementById('evoCanvas')}));
+            if(!snap.bridge||snap.evo!=='evolution-v3.0'||snap.players<1||!snap.canvas[0]||!snap.pixi)throw new Error(`${name}: boot inválido ${JSON.stringify(snap)}`);
+            await page.locator('#evoDockMain').click(); await page.locator('[data-evo="profile"]').click(); await page.waitForFunction(()=>document.getElementById('evoProfileBody')?.textContent?.includes('DESAFIOS'),{timeout:5000}); await page.locator('#evoProfile .evoClose').click();
+            await page.locator('#evoDockMain').click(); await page.locator('[data-evo="room"]').click(); await page.locator('#evoRoomCode').fill('TEST123'); await page.locator('#evoRoomJoin').click(); await page.waitForFunction(()=>document.getElementById('evoRoomNow')?.textContent?.includes('TEST123'),{timeout:5000}); await page.locator('#evoRoom .evoClose').click();
+            await page.locator('#evoDockMain').click(); await page.locator('[data-evo="emote"]').click(); await page.locator('[data-emote="😂"]').click(); await page.waitForSelector('.evoEmoji',{timeout:5000});
+            snap=await page.evaluate(()=>({room:window.DEADZONE_BRIDGE?.getState?.()?.room,destructibles:window.DEADZONE_BRIDGE?.getState?.()?.destructibles?.length||0,quality:localStorage.getItem('deadzone_quality')}));
+            if(snap.room!=='TEST123'||snap.destructibles<1)throw new Error(`${name}: sala/destrutíveis inválidos ${JSON.stringify(snap)}`);
+            await page.screenshot({path:`visual-artifacts/${name}.png`,fullPage:true});
+            if(errors.length)throw new Error(`${name}: ${errors.join(' | ')}`);
+            results.push(`${name}: OK room=${snap.room} destructibles=${snap.destructibles} quality=${snap.quality}`); await context.close();
+          }
+          await arena('mobile-390x844',{width:390,height:844},true);
+          await arena('desktop-1280x720',{width:1280,height:720},false);
+          const pc=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:2}); const p=await pc.newPage(); const pe=[];p.on('pageerror',e=>pe.push(e.message));await p.goto('http://127.0.0.1:3000/practice.html',{waitUntil:'domcontentloaded'});await p.waitForTimeout(1200);const practice=await p.evaluate(()=>({w:game.width,h:game.height,weapon:document.getElementById('weapon')?.textContent,stats:document.getElementById('stats')?.textContent}));if(!practice.w||!practice.h||!practice.weapon||pe.length)throw new Error(`practice inválido ${JSON.stringify(practice)} ${pe.join('|')}`);await p.screenshot({path:'visual-artifacts/practice-mobile.png',fullPage:true});results.push(`practice-mobile: OK ${practice.weapon}`);await pc.close();
+          await browser.close(); console.log(results.join('\n'));
+          JS
+          node smoke.mjs >/tmp/smoke.out 2>/tmp/smoke.err
+          RC=$?
+          {
+            echo "DEADZONE Evolution V3 browser smoke"
+            echo "UTC: $(date -u +%FT%TZ)"
+            echo "rc=$RC"
+            echo
+            cat /tmp/health.json
+            echo
+            cat /tmp/smoke.out
+            cat /tmp/smoke.err
+          } > ci-evolution-smoke.txt
+          echo "rc=$RC" >> "$GITHUB_OUTPUT"
+          exit 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: deadzone-evolution-v3-smoke
+          path: visual-artifacts
+          retention-days: 3
+      - name: Commit smoke report
+        if: always()
+        run: |
+          git config user.name "deadzone-smoke"
+          git config user.email "deadzone-smoke@users.noreply.github.com"
+          git add ci-evolution-smoke.txt
+          if ! git diff --cached --quiet; then git commit -m "Record Evolution V3 smoke result [skip ci]" && git push origin HEAD:feature/deadzone-evolution-v3; fi
+      - name: Fail on smoke regression
+        if: steps.test.outputs.rc != '0'
+        run: exit 1
