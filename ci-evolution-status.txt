@@ -1,0 +1,21 @@
+DEADZONE Evolution V3 bootstrap
+UTC: 2026-08-21T03:47:57Z
+patch_rc=0
+build_rc=0
+
+[patch] Evolution V3 integrado com sucesso
+npm warn deprecated uuid@7.0.3: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
+
+added 129 packages in 10s
+
+> deadzone@2.0.0-preview.1 build:client
+> esbuild client-v3/src/evolution.ts --bundle --minify --format=iife --target=es2020 --outfile=public/evolution-v3.js
+
+
+  public/evolution-v3.js  514.0kb
+
+⚡ Done in 80ms
+
+> deadzone@2.0.0-preview.1 test:syntax
+> node --check server.js && node --check progression.js && node --check public/practice.js
+
