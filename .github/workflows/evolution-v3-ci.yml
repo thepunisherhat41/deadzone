@@ -3,6 +3,9 @@ on:
   push:
     branches:
       - feature/deadzone-evolution-v3
+  pull_request:
+    branches:
+      - main
 permissions:
   contents: write
 jobs:
@@ -96,7 +99,7 @@ jobs:
           path: visual-artifacts
           retention-days: 3
       - name: Commit validated Evolution V3 build
-        if: success()
+        if: success() && github.event_name == 'push'
         run: |
           git config user.name "deadzone-ci"
           git config user.email "deadzone-ci@users.noreply.github.com"
