@@ -17,7 +17,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Patch, build and self-report
+      - name: Patch, build, protocol smoke and self-report
         id: build
         shell: bash
         run: |
@@ -30,22 +30,51 @@ jobs:
             python3 scripts/apply-evolution-v3.py >> /tmp/evolution.log 2>&1
             PATCH_RC=$?
           fi
+          POSTFIX_RC=0
+          if [ "$PATCH_RC" -eq 0 ]; then python3 scripts/evolution-v3-postfix.py >> /tmp/evolution.log 2>&1; POSTFIX_RC=$?; fi
           BUILD_RC=$PATCH_RC
-          if [ "$PATCH_RC" -eq 0 ]; then
+          if [ "$POSTFIX_RC" -ne 0 ]; then BUILD_RC=$POSTFIX_RC; fi
+          if [ "$BUILD_RC" -eq 0 ]; then
             npm install --save-dev --no-audit --no-fund pixi.js esbuild typescript @capacitor/core @capacitor/cli @capacitor/android @capacitor/ios >> /tmp/evolution.log 2>&1
             BUILD_RC=$?
           fi
           if [ "$BUILD_RC" -eq 0 ]; then npm run build:client >> /tmp/evolution.log 2>&1; BUILD_RC=$?; fi
           if [ "$BUILD_RC" -eq 0 ]; then npm run test:syntax >> /tmp/evolution.log 2>&1; BUILD_RC=$?; fi
+          PROTOCOL_RC=$BUILD_RC
+          if [ "$BUILD_RC" -eq 0 ]; then
+            PORT=3000 npm start >/tmp/server.log 2>&1 &
+            SERVER_PID=$!
+            READY=1
+            for i in $(seq 1 25); do curl -fsS http://127.0.0.1:3000/health >/tmp/health.json && { READY=0; break; }; sleep 1; done
+            PROTOCOL_RC=$READY
+            if [ "$READY" -eq 0 ]; then
+              cat > protocol-smoke.cjs <<'JS'
+          const WebSocket=require('ws');const crypto=require('crypto');
+          const tok=()=>crypto.randomBytes(24).toString('hex');
+          function make(){const ws=new WebSocket(`ws://127.0.0.1:3000?session=${tok()}&player=${tok()}`),b={ws,init:null,state:null,room:null,profile:null};ws.on('message',r=>{const m=JSON.parse(r);if(m.type==='init')b.init=m;if(m.type==='state')b.state=m;if(m.type==='roomInfo')b.room=m;if(m.type==='profile')b.profile=m;if(m.type==='ping')ws.send(JSON.stringify({type:'pong'}));});return b}
+          const wait=(fn,ms=7000)=>new Promise((res,rej)=>{const s=Date.now(),t=setInterval(()=>{let v;try{v=fn()}catch(e){clearInterval(t);return rej(e)}if(v){clearInterval(t);res(v)}else if(Date.now()-s>ms){clearInterval(t);rej(new Error('timeout'))}},40)});
+          (async()=>{const a=make(),b=make();await wait(()=>a.init&&b.init);a.ws.send(JSON.stringify({type:'setName',name:'ALFA',level:3}));b.ws.send(JSON.stringify({type:'setName',name:'BETA',level:2}));await wait(()=>a.state&&b.state);if(a.init.build!=='v5-evolution-3.0-preview')throw Error('build');if(!a.init.season)throw Error('season');a.ws.send(JSON.stringify({type:'profileRequest'}));await wait(()=>a.profile?.data?.challenges?.length);a.ws.send(JSON.stringify({type:'roomJoin',room:'CASA859'}));await wait(()=>a.room?.room==='CASA859');await wait(()=>a.state?.room==='CASA859'&&a.state?.destructibles?.length>0);if(a.state.players.some(p=>p.name==='BETA'))throw Error('room isolation');a.ws.send(JSON.stringify({type:'emote',emoji:'😂'}));await wait(()=>a.state?.events?.some(e=>e.kind==='emote'));a.ws.send(JSON.stringify({type:'roomJoin',room:'PUBLIC'}));await wait(()=>a.room?.room==='PUBLIC');await wait(()=>a.state?.room==='PUBLIC'&&a.state.players.some(p=>p.name==='BETA'));await wait(()=>a.state.players.some(p=>p.isBot));console.log(`protocol OK bots=${a.state.players.filter(p=>p.isBot).length} challenges=${a.profile.data.challenges.length}`);a.ws.close();b.ws.close()})().catch(e=>{console.error(e.stack||e);process.exit(1)});
+          JS
+              node protocol-smoke.cjs >>/tmp/evolution.log 2>&1
+              PROTOCOL_RC=$?
+            fi
+            kill "$SERVER_PID" 2>/dev/null || true
+          fi
           {
             echo "DEADZONE Evolution V3 bootstrap"
             echo "UTC: $(date -u +%FT%TZ)"
             echo "patch_rc=$PATCH_RC"
+            echo "postfix_rc=$POSTFIX_RC"
             echo "build_rc=$BUILD_RC"
+            echo "protocol_rc=$PROTOCOL_RC"
+            echo
+            [ -f /tmp/health.json ] && cat /tmp/health.json
             echo
             cat /tmp/evolution.log
+            echo
+            [ -f /tmp/server.log ] && tail -50 /tmp/server.log
           } > ci-evolution-status.txt
-          echo "rc=$BUILD_RC" >> "$GITHUB_OUTPUT"
+          echo "rc=$PROTOCOL_RC" >> "$GITHUB_OUTPUT"
           exit 0
       - name: Commit result and generated build
         shell: bash
