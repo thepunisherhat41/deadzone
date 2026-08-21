@@ -1,0 +1,33 @@
+DEADZONE Evolution V3 bootstrap
+UTC: 2026-08-21T03:58:30Z
+patch_rc=0
+postfix_rc=0
+build_rc=0
+protocol_rc=0
+
+{"ok":true,"build":"v5-evolution-3.0-preview","players":0,"bots":0,"ranking":"memory","progression":"memory"}
+patch already applied
+[postfix] changes=4
+
+up to date in 3s
+
+> deadzone@2.0.0-preview.1 build:client
+> esbuild client-v3/src/evolution.ts --bundle --minify --format=iife --target=es2020 --outfile=public/evolution-v3.js
+
+
+  public/evolution-v3.js  514.0kb
+
+⚡ Done in 76ms
+
+> deadzone@2.0.0-preview.1 test:syntax
+> node --check server.js && node --check progression.js && node --check public/practice.js
+
+protocol OK bots=1 challenges=4
+
+
+> deadzone@2.0.0-preview.1 start
+> node server.js
+
+[ranking] DATABASE_URL ausente: ranking semanal em memória (não persiste após restart).
+[progression] DATABASE_URL ausente: perfil em memória.
+DEADZONE rodando na porta 3000 — mapa: Casa da Vó — ranking: memory — progression: memory

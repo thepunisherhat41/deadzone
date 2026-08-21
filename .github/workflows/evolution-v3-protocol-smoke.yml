@@ -1,0 +1,99 @@
+name: Evolution V3 Protocol Smoke
+on:
+  push:
+    branches:
+      - feature/deadzone-evolution-v3
+permissions:
+  contents: write
+jobs:
+  protocol:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/deadzone-evolution-v3
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Execute protocol tests
+        id: test
+        shell: bash
+        run: |
+          set +e
+          : >/tmp/protocol.out
+          npm ci --no-audit --no-fund >>/tmp/protocol.out 2>&1
+          INSTALL_RC=$?
+          if [ "$INSTALL_RC" -eq 0 ]; then
+            PORT=3000 npm start >/tmp/server.log 2>&1 &
+            SERVER_PID=$!
+            READY=1
+            for i in $(seq 1 30); do
+              curl -fsS http://127.0.0.1:3000/health >/tmp/health.json && { READY=0; break; }
+              sleep 1
+            done
+          else READY=1; fi
+          TEST_RC=$READY
+          if [ "$READY" -eq 0 ]; then
+            cat > protocol-smoke.cjs <<'JS'
+          const WebSocket=require('ws');
+          const crypto=require('crypto');
+          function token(){return crypto.randomBytes(24).toString('hex')}
+          function client(name){
+            const session=token(),player=token();
+            const ws=new WebSocket(`ws://127.0.0.1:3000?session=${session}&player=${player}`);
+            const box={ws,name,msgs:[],init:null,state:null,room:null,profile:null};
+            ws.on('message',raw=>{const m=JSON.parse(raw);box.msgs.push(m);if(m.type==='init')box.init=m;if(m.type==='state')box.state=m;if(m.type==='roomInfo')box.room=m;if(m.type==='profile')box.profile=m;if(m.type==='ping')ws.send(JSON.stringify({type:'pong'}));});
+            return box;
+          }
+          function waitFor(fn,ms=6000){const start=Date.now();return new Promise((res,rej)=>{const t=setInterval(()=>{try{const v=fn();if(v){clearInterval(t);res(v)}else if(Date.now()-start>ms){clearInterval(t);rej(new Error('timeout'))}}catch(e){clearInterval(t);rej(e)}},40)})}
+          (async()=>{
+            const a=client('A'),b=client('B');
+            await waitFor(()=>a.init&&b.init);
+            a.ws.send(JSON.stringify({type:'setName',name:'ALFA',level:3}));b.ws.send(JSON.stringify({type:'setName',name:'BETA',level:2}));
+            await waitFor(()=>a.state&&b.state);
+            if(a.init.build!=='v5-evolution-3.0-preview')throw new Error('build marker incorreto');
+            if(!a.init.season||!a.init.progressionPersistent===undefined)throw new Error('init Evolution incompleto');
+            a.ws.send(JSON.stringify({type:'profileRequest'})); await waitFor(()=>a.profile);
+            if(!a.profile.data?.season||!Array.isArray(a.profile.data?.challenges))throw new Error('profile/challenges ausentes');
+            a.ws.send(JSON.stringify({type:'roomJoin',room:'CASA859'})); await waitFor(()=>a.room?.room==='CASA859');
+            await waitFor(()=>a.state?.room==='CASA859'&&Array.isArray(a.state?.destructibles)&&a.state.destructibles.length>0);
+            await waitFor(()=>b.state?.room==='PUBLIC');
+            if(a.state.players.some(p=>p.name==='BETA'))throw new Error('isolamento de sala falhou: BETA visível em CASA859');
+            a.ws.send(JSON.stringify({type:'emote',emoji:'😂'})); await waitFor(()=>a.state?.events?.some(e=>e.kind==='emote'&&e.emoji==='😂'));
+            a.ws.send(JSON.stringify({type:'roomJoin',room:'PUBLIC'})); await waitFor(()=>a.room?.room==='PUBLIC');
+            await waitFor(()=>a.state?.room==='PUBLIC'&&a.state.players.some(p=>p.name==='BETA'));
+            const bots=(a.state.players||[]).filter(p=>p.isBot).length;if(bots<1)throw new Error('bots de preenchimento não apareceram');
+            console.log(`OK build=${a.init.build} roomIsolation=true destructibles=${a.state.destructibles?.length||0} bots=${bots} challenges=${a.profile.data.challenges.length}`);
+            a.ws.close();b.ws.close();
+          })().catch(e=>{console.error(e.stack||e);process.exit(1)});
+          JS
+            node protocol-smoke.cjs >>/tmp/protocol.out 2>&1
+            TEST_RC=$?
+          fi
+          {
+            echo "DEADZONE Evolution V3 protocol smoke"
+            echo "UTC: $(date -u +%FT%TZ)"
+            echo "install_rc=$INSTALL_RC"
+            echo "server_ready_rc=$READY"
+            echo "test_rc=$TEST_RC"
+            echo
+            [ -f /tmp/health.json ] && cat /tmp/health.json
+            echo
+            cat /tmp/protocol.out
+            echo
+            [ -f /tmp/server.log ] && tail -80 /tmp/server.log
+          } > ci-evolution-protocol.txt
+          echo "rc=$TEST_RC" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Commit protocol report
+        if: always()
+        run: |
+          git config user.name "deadzone-protocol"
+          git config user.email "deadzone-protocol@users.noreply.github.com"
+          git add ci-evolution-protocol.txt
+          if ! git diff --cached --quiet; then git commit -m "Record Evolution V3 protocol smoke [skip ci]" && git push origin HEAD:feature/deadzone-evolution-v3; fi
+      - name: Fail on regression
+        if: steps.test.outputs.rc != '0'
+        run: exit 1
