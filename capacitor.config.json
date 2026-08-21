@@ -1,0 +1,18 @@
+{
+  "appId": "com.deadzone.alpes",
+  "appName": "DEADZONE",
+  "webDir": "public",
+  "backgroundColor": "#070a10",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": false
+  },
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#070a10"
+  },
+  "ios": {
+    "backgroundColor": "#070a10",
+    "contentInset": "always"
+  }
+}
