@@ -1,0 +1,15 @@
+{
+  "name": "DEADZONE: Alpes Edition",
+  "short_name": "DEADZONE",
+  "description": "Arena multiplayer top-down brasileira com ranking, salas privadas e treino offline.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "fullscreen",
+  "orientation": "portrait-primary",
+  "background_color": "#070a10",
+  "theme_color": "#0d111a",
+  "categories": ["games", "entertainment"],
+  "icons": [
+    { "src": "/icon-deadzone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
