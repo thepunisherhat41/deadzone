@@ -1026,7 +1026,7 @@ document.getElementById('bombBtn').onclick = useBomb;
 // ---- Votação ----
 let myVote = null, lastVoteUiSig = '';
 function updateVoteUI() {
-  const votePlayersSig = state.players.map(p => `${p.id}:${p.kills}:${p.spectating?1:0}:${p.name}`).join(';');
+  const votePlayersSig = state.players.map(p => `${p.id}:${p.kills}:${p.spectating?1:0}:${p.isBot?1:0}:${p.name}`).join(';');
   const voteSig = `${state.phase}|${state.timeLeft}|${myVote}|${JSON.stringify(state.votes||{})}|${state.ejected?state.ejected.id||state.ejected.name||'x':''}|${votePlayersSig}`;
   if (voteSig === lastVoteUiSig) return;
   lastVoteUiSig = voteSig;
@@ -1050,7 +1050,7 @@ function updateVoteUI() {
     const list = document.getElementById('voteList');
     list.innerHTML = '';
     for (const p of state.players) {
-      if (p.spectating) continue;
+      if (p.spectating || p.isBot) continue;
       const row = document.createElement('div');
       row.className = 'voteRow' + (myVote == p.id ? ' voted' : '');
       row.innerHTML = `<div class="who"><span class="dot" style="background:${p.color}"></span><span>${escapeHtml(p.name)}${p.id===myId?' (você)':''} <span style="color:#8f95a5">${p.kills}💀</span></span></div><span class="cnt">${tally[p.id]||0}</span>`;

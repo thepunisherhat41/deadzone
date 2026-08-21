@@ -692,6 +692,12 @@ function segmentHitsWall(x1, y1, x2, y2) {
 
 function explodeBomb(b) {
   events.push({ kind: 'bombExplosion', room:b.room, x: b.x, y: b.y, radius: b.radius });
+  for (const d of ensureRoomDestructibles(b.room || ROOM_PUBLIC)) {
+    if (d.hp <= 0) continue;
+    const dd=Math.hypot(d.x-b.x,d.y-b.y); if(dd>b.radius)continue;
+    const pdmg=Math.max(12,Math.round(b.damage*(1-Math.min(1,dd/b.radius)*.55)));
+    d.hp=Math.max(0,d.hp-pdmg); events.push({kind:d.hp<=0?'destructibleBreak':'destructibleHit',room:b.room,x:d.x,y:d.y,id:d.id,objectType:d.type,hp:d.hp,maxHp:d.maxHp});
+  }
   const attacker = players.get(b.owner) || null;
   for (const pl of players.values()) {
     if (!pl.connected || pl.room !== b.room || !pl.alive || isSpectating(pl)) continue;
@@ -980,7 +986,7 @@ setInterval(() => {
       pl.hp = Math.min(pl.maxHp, pl.hp + hp.heal);
       const healed = pl.hp - before;
       hp.respawnAt = nowTick + randomHealthRespawn();
-      events.push({ kind: 'heal', x: hp.x, y: hp.y, player: pl.id, amount: healed });
+      events.push({ kind: 'heal', room:hp.room, x: hp.x, y: hp.y, player: pl.id, amount: healed });
       break;
     }
   }
