@@ -1,0 +1,62 @@
+name: Evolution V3 Bootstrap
+on:
+  push:
+    branches:
+      - feature/deadzone-evolution-v3
+permissions:
+  contents: write
+jobs:
+  bootstrap:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/deadzone-evolution-v3
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Patch, build and self-report
+        id: build
+        shell: bash
+        run: |
+          set +e
+          : > /tmp/evolution.log
+          if grep -q "v5-evolution-3.0-preview" server.js; then
+            echo "patch already applied" >> /tmp/evolution.log
+            PATCH_RC=0
+          else
+            python3 scripts/apply-evolution-v3.py >> /tmp/evolution.log 2>&1
+            PATCH_RC=$?
+          fi
+          BUILD_RC=$PATCH_RC
+          if [ "$PATCH_RC" -eq 0 ]; then
+            npm install --save-dev --no-audit --no-fund pixi.js esbuild typescript @capacitor/core @capacitor/cli @capacitor/android @capacitor/ios >> /tmp/evolution.log 2>&1
+            BUILD_RC=$?
+          fi
+          if [ "$BUILD_RC" -eq 0 ]; then npm run build:client >> /tmp/evolution.log 2>&1; BUILD_RC=$?; fi
+          if [ "$BUILD_RC" -eq 0 ]; then npm run test:syntax >> /tmp/evolution.log 2>&1; BUILD_RC=$?; fi
+          {
+            echo "DEADZONE Evolution V3 bootstrap"
+            echo "UTC: $(date -u +%FT%TZ)"
+            echo "patch_rc=$PATCH_RC"
+            echo "build_rc=$BUILD_RC"
+            echo
+            cat /tmp/evolution.log
+          } > ci-evolution-status.txt
+          echo "rc=$BUILD_RC" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Commit result and generated build
+        shell: bash
+        run: |
+          git config user.name "deadzone-bootstrap"
+          git config user.email "deadzone-bootstrap@users.noreply.github.com"
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "Bootstrap DEADZONE Evolution V3 [skip ci]"
+            git push origin HEAD:feature/deadzone-evolution-v3
+          fi
+      - name: Fail if bootstrap failed
+        if: steps.build.outputs.rc != '0'
+        run: exit 1
