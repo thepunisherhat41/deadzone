@@ -1,0 +1,106 @@
+name: Evolution V3 CI
+on:
+  push:
+    branches:
+      - feature/deadzone-evolution-v3
+permissions:
+  contents: write
+jobs:
+  build-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/deadzone-evolution-v3
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply Evolution V3 integration
+        run: |
+          if grep -q "v5-evolution-3.0-preview" server.js; then
+            echo "Evolution V3 patch already applied"
+          else
+            python3 scripts/apply-evolution-v3.py
+          fi
+      - name: Install open-source client and mobile toolchain
+        run: |
+          npm install --save-dev --no-audit --no-fund pixi.js esbuild typescript @capacitor/core @capacitor/cli @capacitor/android @capacitor/ios
+      - name: Build TypeScript WebGL layer
+        run: npm run build:client
+      - name: Syntax validation
+        run: |
+          npm run test:syntax
+          python3 - <<'PY'
+          import re, pathlib
+          html=pathlib.Path('public/index.html').read_text(encoding='utf-8')
+          scripts=[]
+          for attrs,body in re.findall(r'<script([^>]*)>(.*?)</script>',html,re.S|re.I):
+              if 'src=' not in attrs.lower(): scripts.append(body)
+          pathlib.Path('/tmp/deadzone-inline.js').write_text('\n'.join(scripts),encoding='utf-8')
+          PY
+          node --check /tmp/deadzone-inline.js
+      - name: Start local DEADZONE
+        run: |
+          PORT=3000 npm start > /tmp/deadzone.log 2>&1 &
+          echo $! >/tmp/deadzone.pid
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3000/health >/tmp/health.json; then cat /tmp/health.json; break; fi
+            sleep 1
+          done
+          grep -q '"ok":true' /tmp/health.json
+          for asset in / /evolution-v3.js /practice.html /practice.js /manifest.webmanifest /sw.js /icon-deadzone.svg; do curl -fsS "http://127.0.0.1:3000$asset" >/dev/null; done
+      - name: Install browser smoke runner
+        run: |
+          npm install --no-save --package-lock=false --no-audit --no-fund playwright
+          npx playwright install --with-deps chromium
+      - name: Mobile and desktop gameplay smoke
+        shell: bash
+        run: |
+          mkdir -p visual-artifacts
+          cat > visual-smoke.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          async function arena(name,viewport,isMobile){
+            const context=await browser.newContext({viewport,isMobile,hasTouch:isMobile,deviceScaleFactor:isMobile?2:1});
+            const page=await context.newPage(); const errors=[];
+            page.on('pageerror',e=>errors.push(e.message)); page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+            await page.goto('http://127.0.0.1:3000',{waitUntil:'domcontentloaded'});
+            await page.waitForFunction(()=>window.DEADZONE_EVOLUTION_BUILD==='evolution-v3.0',{timeout:10000});
+            await page.locator('#start input').fill(name); await page.locator('#playBtn').click();
+            await page.waitForFunction(()=>getComputedStyle(document.getElementById('start')).display==='none',{timeout:12000});
+            await page.waitForTimeout(1700);
+            const base=await page.evaluate(()=>({bridge:!!window.DEADZONE_BRIDGE,evo:window.DEADZONE_EVOLUTION_BUILD,canvas:[game.width,game.height],dock:getComputedStyle(document.getElementById('evoDock')).display,state:window.DEADZONE_BRIDGE?.getState?.()?.players?.length||0}));
+            if(!base.bridge||base.evo!=='evolution-v3.0'||!base.canvas[0]||base.dock==='none'||base.state<1)throw new Error(`${name}: Evolution bridge inválida ${JSON.stringify(base)}`);
+            await page.locator('#evoDockMain').click(); await page.locator('[data-evo="room"]').click(); await page.locator('#evoRoomCode').fill('TEST123'); await page.locator('#evoRoomJoin').click();
+            await page.waitForFunction(()=>document.getElementById('evoRoomNow')?.textContent?.includes('TEST123'),{timeout:5000});
+            await page.locator('.evoClose').nth(1).click().catch(()=>{});
+            await page.screenshot({path:`visual-artifacts/${name}.png`,fullPage:true});
+            if(errors.length)throw new Error(`${name} browser errors: ${errors.join(' | ')}`);
+            await context.close();
+          }
+          await arena('mobile-390x844',{width:390,height:844},true);
+          await arena('desktop-1280x720',{width:1280,height:720},false);
+          const pctx=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:2}); const practice=await pctx.newPage();
+          await practice.goto('http://127.0.0.1:3000/practice.html',{waitUntil:'domcontentloaded'}); await practice.waitForTimeout(900);
+          const p=await practice.evaluate(()=>({w:document.getElementById('game').width,h:document.getElementById('game').height,weapon:document.getElementById('weapon').textContent})); if(!p.w||!p.h||!p.weapon)throw new Error('practice offline não iniciou');
+          await practice.screenshot({path:'visual-artifacts/practice-mobile.png',fullPage:true}); await pctx.close(); await browser.close();
+          JS
+          node visual-smoke.mjs
+          rm -f visual-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: deadzone-evolution-v3-smoke
+          path: visual-artifacts
+          retention-days: 3
+      - name: Commit validated Evolution V3 build
+        if: success()
+        run: |
+          git config user.name "deadzone-ci"
+          git config user.email "deadzone-ci@users.noreply.github.com"
+          git add server.js public/index.html progression.js package.json package-lock.json public/evolution-v3.js public/practice.html public/practice.js public/runtime-config.js public/manifest.webmanifest public/sw.js public/icon-deadzone.svg capacitor.config.json client-v3/src/evolution.ts scripts/apply-evolution-v3.py .github/workflows/evolution-v3-ci.yml
+          if git diff --cached --quiet; then echo "No generated changes"; exit 0; fi
+          git commit -m "Build DEADZONE Evolution V3 preview [skip ci]"
+          git push origin HEAD:feature/deadzone-evolution-v3
